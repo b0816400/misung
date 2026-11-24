@@ -1,0 +1,2511 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1220">
+  <title>미성달력</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+      color: #e6ecf5;
+      background: #0b1220;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+      --muted: #a0aec0;
+      --line: #29374d;
+      --purple: #8b83ff;
+      --purple-light: #2c2d50;
+    }
+
+    * { box-sizing: border-box; }
+
+    body { margin: 0; min-width: 320px; }
+
+    button, input, textarea { font: inherit; }
+    button { cursor: pointer; }
+
+    .app {
+      width: min(1200px, calc(100% - 48px));
+      margin: 48px auto;
+      overflow: hidden;
+      border: 1px solid #27364d;
+      border-radius: 24px;
+      background: #121c2d;
+      box-shadow: 0 18px 60px rgb(0 0 0 / 28%);
+    }
+
+    .database-setup { max-width: 680px; margin: 0 auto; padding: 32px; }
+    .database-setup h2 { margin: 0; font-size: 22px; }
+    .database-setup > p { color: var(--muted); line-height: 1.6; }
+    .public-access-warning { padding: 12px; border: 1px solid #8a6743; border-radius: 9px; color: #ffd59b !important; background: #352b20; font-size: 13px; }
+    .database-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 18px; }
+    .database-actions button, .connection-bar button {
+      min-height: 40px;
+      padding: 0 14px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      color: #dce5f2;
+      background: #1a2639;
+      font: inherit;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .database-actions button:disabled { cursor: wait; opacity: 0.65; }
+    .database-actions .save-button { border-color: var(--purple); color: #fff; background: #7169e8; }
+    .database-message { margin-top: 14px; color: #b4c0d2; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+    .database-message.error { color: #ff929c; }
+    .connection-bar { display: flex; align-items: center; gap: 10px; padding: 10px 24px; border-bottom: 1px solid var(--line); }
+    .connection-bar span { color: var(--muted); font-size: 12px; }
+    .connection-bar span:first-child { margin-right: auto; }
+    .connection-bar button { min-height: 34px; padding: 0 10px; font-size: 12px; }
+    .data-tools { margin-top: 24px; padding-top: 14px; border-top: 1px solid var(--line); }
+    .data-tools summary { width: fit-content; color: var(--muted); cursor: pointer; font-size: 12px; }
+    .data-tools-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .data-tools-actions button { min-height: 38px; }
+    .shared-import { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: 16px 24px 0; padding: 12px 14px; border: 1px solid #40516b; border-radius: 10px; background: #172438; }
+    .shared-import[hidden] { display: none; }
+    .shared-import p { margin: 0; color: #dce5f2; font-size: 13px; line-height: 1.5; }
+    .shared-import-actions { display: flex; flex: 0 0 auto; flex-wrap: wrap; gap: 8px; }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 28px 32px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-mark {
+      display: grid;
+      width: 42px;
+      height: 42px;
+      place-items: center;
+      border-radius: 13px;
+      color: #fff;
+      background: var(--purple);
+      font-size: 21px;
+    }
+    .brand h1 { margin: 0; font-size: 19px; letter-spacing: -0.5px; }
+    .brand p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+
+    .toolbar { display: flex; align-items: center; gap: 9px; }
+    .toolbar button, .add-button {
+      min-height: 40px;
+      padding: 0 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      color: #dce5f2;
+      background: #1a2639;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .toolbar button:hover, .add-button:hover { background: #243149; }
+    .toolbar .nav-button { width: 40px; padding: 0; font-size: 20px; }
+    .toolbar .today-button { margin-left: 4px; }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .calendar-area { padding: 28px 32px 32px; }
+    .month-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 22px; }
+    .month-title-group { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+    .month-heading h2 { margin: 0; font-size: 27px; letter-spacing: -1px; }
+    .month-heading span { color: var(--muted); font-size: 14px; }
+    .month-mode-toggle { display: inline-flex; flex: 0 0 auto; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 10px; background: #0d1728; }
+    .month-mode-toggle button { min-height: 34px; padding: 0 10px; border: 0; border-radius: 7px; color: #a0aec0; background: transparent; font: inherit; font-size: 12px; font-weight: 600; }
+    .month-mode-toggle button[aria-pressed="true"] { color: #fff; background: #7169e8; }
+    .room-mode-view { margin-bottom: 4px; }
+    .room-select-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; margin-bottom: 12px; }
+    .room-select-button { min-width: 0; min-height: 36px; padding: 5px 3px; border: 1px solid #34445b; border-radius: 8px; color: #dce5f2; background: #172438; font: inherit; font-size: 13px; font-weight: 600; }
+    .room-select-button:hover { border-color: #7169e8; background: #202c43; }
+    .room-select-button[aria-pressed="true"] { border-color: var(--purple); color: #fff; background: #4a467b; }
+    .room-select-button.has-income:not([aria-pressed="true"]) { border-color: #287c64; color: #88f0c5; background: #163b36; }
+    .room-select-button.has-income[aria-pressed="true"] { border-color: #55d6a4; color: #fff; background: #28634f; }
+    .room-income-legend { margin: 0 0 8px; color: var(--muted); font-size: 12px; }
+    .room-income-legend span { margin-right: 5px; color: #55d6a4; }
+    .room-card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr)); gap: 12px; }
+    .room-card { min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: #172438; }
+    .room-card-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .room-card-header h3 { margin: 0; font-size: 20px; }
+    .room-resident-name { margin-left: 6px; color: #b4c0d2; font-size: 14px; font-weight: 500; }
+    .room-profile-details { margin: 7px 0 0; color: #aebbd0; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+    .event-room-profile { margin: 6px 0 0; color: #aebbd0; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+    .room-card-count { color: var(--muted); font-size: 12px; }
+    .room-card-totals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+    .room-card-total { padding: 9px; border-radius: 8px; background: #101b2c; }
+    .room-card-total span { display: block; color: var(--muted); font-size: 11px; }
+    .room-card-total strong { display: block; margin-top: 4px; font-size: 14px; }
+    .room-card-total.income strong { color: #55d6a4; }
+    .room-card-total.expense strong { color: #ff8792; }
+    .room-entry-list { display: grid; gap: 7px; margin-top: 12px; }
+    .room-entry { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; width: 100%; padding: 9px; border: 1px solid #29374d; border-radius: 8px; color: #e6ecf5; background: #121c2d; text-align: left; font: inherit; }
+    .room-entry:hover { border-color: #7169e8; background: #1a2940; }
+    .room-entry-date { color: var(--muted); font-size: 12px; }
+    .room-entry-kind { font-size: 12px; font-weight: 700; }
+    .room-entry-kind.income { color: #55d6a4; }
+    .room-entry-kind.expense { color: #ff8792; }
+    .room-entry-kind.memo { color: #8ec8ff; }
+    .room-entry-detail { grid-column: 1 / -1; color: #dce5f2; font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
+    .room-mode-empty { grid-column: 1 / -1; margin: 36px 0; color: var(--muted); text-align: center; font-size: 14px; line-height: 1.7; }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+    .calendar-grid[hidden] { display: none; }
+    .weekday {
+      padding: 0 0 13px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .weekday:first-child { color: #e27782; }
+    .weekday:last-child { color: #6b82cc; }
+
+    .day {
+      position: relative;
+      display: flex;
+      min-width: 0;
+      min-height: 90px;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px 4px 6px;
+      border: 0;
+      border-top: 1px solid var(--line);
+      color: #dce5f2;
+      background: #121c2d;
+      text-align: center;
+    }
+    .day:hover { background: #1a2940; }
+    .day.outside { color: #66758e; }
+    #calendar-grid > .day:nth-child(7n + 1) .day-number { color: #ff929c; }
+    #calendar-grid > .day:nth-child(7n) .day-number { color: #8fb7ff; }
+    .day-number {
+      display: grid;
+      width: 31px;
+      height: 31px;
+      place-items: center;
+      border-radius: 50%;
+      font-size: 13px;
+    }
+    .day.today .day-number { color: #fff; background: var(--purple); font-weight: 700; }
+    .day.selected:not(.today) .day-number { color: var(--purple); background: var(--purple-light); font-weight: 700; }
+    .day-events { display: flex; max-width: 100%; gap: 3px; margin-top: 5px; }
+    .event-dot { width: 5px; height: 5px; border-radius: 50%; background: #9b94e9; }
+    .event-count {
+      max-width: 90%;
+      overflow: hidden;
+      margin-top: 5px;
+      color: #b5afff;
+      font-size: 10px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .day-money { display: grid; gap: 2px; width: 100%; margin-top: 5px; font-size: 9px; line-height: 1.25; }
+    .day-deposit, .day-expense, .day-note { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .day-income, .amount-income { color: #55d6a4; }
+    .day-expense, .amount-expense { color: #ff8792; }
+    .day-note { color: #8ec8ff; }
+    .summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; margin: 0 0 22px; }
+    .summary-card { min-width: 0; padding: 12px 13px; border: 1px solid var(--line); border-radius: 11px; background: #172438; }
+    .summary-card span { display: block; color: var(--muted); font-size: 11px; }
+    .summary-card strong { display: block; overflow: hidden; margin-top: 7px; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+    .summary-card.income strong { color: #55d6a4; }
+    .summary-card.expense strong { color: #ff8792; }
+    .summary-card.balance strong { color: var(--purple); }
+    .month-events-toggle { width: 100%; margin-top: 18px; }
+    .month-event-section { margin-top: 24px; scroll-margin-top: 16px; }
+    .month-event-section h2 { margin: 0 0 12px; font-size: 20px; }
+    .month-event-list { display: grid; gap: 10px; }
+    .month-event-card { padding: 12px; }
+    .month-event-date { margin: 0 0 8px; color: #b4c0d2; font-size: 12px; font-weight: 600; }
+    .month-event-section .event-kind-label { font-size: 12px; }
+    .month-event-section .event-amount,
+    .month-event-section .event-title { font-size: 14px; }
+    .month-event-section .event-notes,
+    .month-event-section .empty-state { font-size: 13px; }
+    .event-card.note { border-left-color: #8ec8ff; }
+    .history-section { margin-top: 24px; scroll-margin-top: 16px; }
+    .history-section h2 { margin: 0 0 8px; font-size: 20px; }
+    .history-description { margin: 0 0 14px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .history-filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+    .history-filter { display: grid; min-width: 0; gap: 6px; }
+    .history-filter label { color: #b4c0d2; font-size: 12px; font-weight: 600; }
+    .history-period-selects { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px; }
+    .history-filter select {
+      width: 100%;
+      min-width: 0;
+      min-height: 42px;
+      padding: 8px 10px;
+      border: 1px solid #34445b;
+      border-radius: 9px;
+      color: #e6ecf5;
+      background: #0d1728;
+      font: inherit;
+      font-size: 13px;
+    }
+    .history-actions { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-top: 12px; }
+    .history-summary { flex: 0 1 auto; margin: 0 0 10px; color: #b4c0d2; font-size: 13px; line-height: 1.5; }
+    .history-search { position: relative; display: grid; flex: 1 1 250px; min-width: 180px; max-width: 360px; gap: 6px; }
+    .history-search label { color: #b4c0d2; font-size: 12px; font-weight: 600; }
+    .history-search input {
+      width: 100%;
+      min-height: 42px;
+      padding: 8px 10px;
+      border: 1px solid #34445b;
+      border-radius: 9px;
+      outline: none;
+      color: #e6ecf5;
+      background: #0d1728;
+      font: inherit;
+      font-size: 13px;
+    }
+    .history-search input:focus { border-color: #9c96e8; box-shadow: 0 0 0 3px rgb(139 131 255 / 18%); }
+    .history-search-results {
+      position: absolute;
+      z-index: 5;
+      top: calc(100% + 4px);
+      right: 0;
+      left: 0;
+      display: grid;
+      max-height: 280px;
+      overflow-y: auto;
+      padding: 4px;
+      border: 1px solid #40516b;
+      border-radius: 10px;
+      background: #142136;
+      box-shadow: 0 12px 30px rgb(0 0 0 / 45%);
+    }
+    .history-search-results[hidden] { display: none; }
+    .history-search-option {
+      padding: 9px 10px;
+      border: 0;
+      border-radius: 6px;
+      color: #e6ecf5;
+      background: transparent;
+      text-align: left;
+      font: inherit;
+      font-size: 13px;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+    .history-search-option:hover, .history-search-option:focus-visible { outline: none; background: #293858; }
+    .history-search-empty { margin: 8px; color: var(--muted); font-size: 13px; }
+    .history-search-status { grid-column: 1 / -1; margin: 0; color: #b4c0d2; font-size: 12px; line-height: 1.5; }
+    .history-search-status[hidden] { display: none; }
+    .history-list { display: grid; gap: 10px; margin-top: 14px; }
+    .history-card { padding: 12px; }
+    .history-date { margin: 0 0 8px; color: #b4c0d2; font-size: 12px; font-weight: 600; }
+    .history-section .event-kind-label { font-size: 12px; }
+    .history-section .event-amount, .history-section .event-title { font-size: 14px; }
+    .history-section .event-notes, .history-section .empty-state { font-size: 13px; }
+
+    .agenda-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .agenda-header p { margin: 0 0 7px; color: var(--muted); font-size: 12px; }
+    .agenda-header h2 { margin: 0; font-size: 19px; letter-spacing: -0.5px; }
+    .add-button {
+      min-height: 34px;
+      padding: 0 11px;
+      border-color: #4a467b;
+      color: #c1bbff;
+      background: #282647;
+      white-space: nowrap;
+    }
+    .event-list { display: grid; gap: 10px; margin-top: 24px; }
+    .event-card {
+      padding: 13px 13px 12px;
+      border: 1px solid #2a384c;
+      border-left: 3px solid #ff8792;
+      border-radius: 10px;
+      background: #172438;
+    }
+    .event-card.income { border-left-color: #55d6a4; }
+    .event-kind { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .event-kind-label { color: var(--muted); font-size: 11px; }
+    .event-amount { font-size: 13px; font-weight: 700; }
+    .event-title { margin: 5px 0 0; font-size: 13px; font-weight: 700; overflow-wrap: anywhere; }
+    .event-notes { margin: 6px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .delete-event {
+      display: block;
+      margin: 9px 0 0 auto;
+      padding: 2px 0;
+      border: 0;
+      color: #a0aec0;
+      background: transparent;
+      font-size: 11px;
+    }
+    .event-actions { display: flex; justify-content: flex-end; gap: 14px; margin-top: 12px; }
+    .event-actions button { min-width: 58px; min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; color: #c1bbff; background: #20233f; font-size: 12px; font-weight: 600; }
+    .event-actions .edit-event:hover { border-color: var(--purple); color: #fff; background: #302d55; }
+    .event-actions .delete-event { margin: 0; }
+    .event-actions .delete-event { border-color: #68414c; color: #ff9aa4; background: #35252f; }
+    .event-actions .delete-event:hover { border-color: #ff8792; color: #fff; background: #552c38; }
+    .empty-state { margin: 36px 0; color: #a0aec0; text-align: center; font-size: 13px; line-height: 1.7; }
+    .storage-hint { margin: 18px 0 0; color: #a0aec0; font-size: 11px; line-height: 1.5; }
+    .storage-message { margin-top: 18px; color: #ff929c; font-size: 12px; line-height: 1.5; }
+
+    dialog {
+      width: min(420px, calc(100% - 32px));
+      padding: 0;
+      border: 0;
+      border-radius: 18px;
+      color: #e6ecf5;
+      background: #142136;
+      box-shadow: 0 22px 70px rgb(0 0 0 / 55%);
+    }
+    #day-dialog { width: min(480px, calc(100% - 32px)); max-height: min(80vh, 760px); overflow: auto; }
+    #room-settings-dialog { width: min(520px, calc(100% - 32px)); max-height: min(85vh, 760px); overflow-y: auto; }
+    #day-event-list { max-height: min(52vh, 440px); overflow-y: auto; padding-right: 4px; }
+    .close-dialog {
+      min-height: 34px;
+      padding: 0 11px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      color: #dce5f2;
+      background: #1a2639;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    dialog::backdrop { background: rgb(3 8 18 / 72%); backdrop-filter: blur(2px); }
+    .dialog-content { padding: 25px; }
+    .dialog-content h2 { margin: 0 0 20px; font-size: 20px; }
+    .field { display: grid; gap: 7px; margin-top: 14px; }
+    .field[hidden] { display: none; }
+    .field label { color: #b4c0d2; font-size: 12px; font-weight: 600; }
+    .field input, .field textarea {
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid #34445b;
+      border-radius: 9px;
+      outline: none;
+      color: #e6ecf5;
+      background: #0d1728;
+      font-size: 13px;
+    }
+    .field input:focus, .field textarea:focus { border-color: #9c96e8; box-shadow: 0 0 0 3px rgb(139 131 255 / 18%); }
+    .field textarea { min-height: 82px; resize: vertical; }
+    .field select {
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid #34445b;
+      border-radius: 9px;
+      color: #e6ecf5;
+      background: #0d1728;
+      font: inherit;
+      font-size: 13px;
+    }
+    .content-select-button {
+      display: flex;
+      width: 100%;
+      min-height: 42px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 0 12px;
+      border: 1px solid #34445b;
+      border-radius: 9px;
+      color: #e6ecf5;
+      background: #0d1728;
+      text-align: left;
+      font: inherit;
+      font-size: 13px;
+    }
+    .content-select-button:focus-visible { outline: 2px solid #9c96e8; outline-offset: 2px; }
+    #event-title-menu {
+      position: fixed;
+      z-index: 10;
+      display: grid;
+      gap: 2px;
+      overflow-y: auto;
+      padding: 4px;
+      border: 1px solid #40516b;
+      border-radius: 10px;
+      background: #142136;
+      box-shadow: 0 12px 30px rgb(0 0 0 / 55%);
+    }
+    #event-title-menu[hidden] { display: none; }
+    .content-option {
+      min-height: 30px;
+      padding: 6px 10px;
+      border: 0;
+      border-radius: 6px;
+      color: #e6ecf5;
+      background: transparent;
+      text-align: left;
+      font: inherit;
+      font-size: 13px;
+    }
+    .content-option:hover, .content-option[aria-selected="true"] { background: #293858; }
+    .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 22px; }
+    .dialog-actions button { min-height: 39px; padding: 0 15px; border: 1px solid var(--line); border-radius: 9px; color: #e6ecf5; background: #1a2639; }
+    .dialog-actions .save-button { border-color: var(--purple); color: #fff; background: #7169e8; font-weight: 600; }
+
+    @media (max-width: 760px) {
+      .app { width: min(100% - 20px, 600px); margin: 10px auto; border-radius: 17px; }
+      .database-setup { padding: 24px 18px; }
+      .connection-bar { flex-wrap: wrap; gap: 8px; padding: 10px 14px; }
+      .connection-bar span:first-child { width: 100%; }
+      .shared-import { align-items: stretch; flex-direction: column; margin: 12px 14px 0; }
+      .shared-import-actions { flex-direction: column; }
+      .data-tools-actions { flex-direction: column; }
+      .topbar { align-items: flex-start; flex-direction: column; padding: 20px; }
+      .toolbar { width: 100%; }
+      .toolbar .today-button { margin-left: auto; }
+      .workspace { grid-template-columns: 1fr; }
+      .calendar-area { padding: 23px 15px 25px; }
+      .month-heading { flex-wrap: wrap; }
+      .day { min-height: 70px; padding-top: 7px; }
+      .event-count { font-size: 9px; }
+      .history-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .history-actions { align-items: stretch; flex-direction: column; }
+      .history-search { flex-basis: auto; width: 100%; max-width: none; }
+      .history-summary { margin: 0; }
+      #day-dialog {
+        position: fixed;
+        inset: auto 0 0;
+        width: 100%;
+        max-width: none;
+        max-height: 85vh;
+        margin: 0;
+        border-radius: 20px 20px 0 0;
+      }
+      #event-dialog {
+        position: fixed;
+        inset: max(12px, env(safe-area-inset-top)) 0 auto;
+        width: 100%;
+        max-width: none;
+        max-height: calc(100vh - 24px);
+        margin: 0;
+        overflow-y: auto;
+        border-radius: 20px;
+      }
+      #room-settings-dialog {
+        position: fixed;
+        inset: auto 0 0;
+        width: 100%;
+        max-width: none;
+        max-height: 85vh;
+        margin: 0;
+        border-radius: 20px 20px 0 0;
+      }
+      #day-dialog .dialog-content, #event-dialog .dialog-content {
+        padding: 24px 20px max(24px, env(safe-area-inset-bottom));
+      }
+      #day-event-list { max-height: 48vh; }
+    }
+
+    body { font-size: 17px; }
+    .brand-mark { width: 52px; height: 52px; font-size: 26px; }
+    .brand h1 { font-size: 32px; }
+    .toolbar button, .add-button { min-height: 46px; font-size: 15px; }
+    .toolbar .nav-button { width: 46px; font-size: 25px; }
+    .month-heading h2 { font-size: 32px; }
+    .month-heading span { font-size: 16px; }
+    .weekday { padding-bottom: 16px; font-size: 15px; }
+    .day { min-height: 112px; }
+    .day-number { width: 42px; height: 42px; font-size: 20px; }
+    .day-money { margin-top: 6px; font-size: 11px; }
+    .event-count { font-size: 12px; }
+    .summary-card { padding: 14px 15px; }
+    .summary-card span { font-size: 14px; }
+    .summary-card strong { font-size: 17px; }
+    .agenda-header p { font-size: 15px; }
+    .agenda-header h2 { font-size: 24px; }
+    .add-button { min-height: 42px; }
+    .event-kind-label { font-size: 14px; }
+    .event-amount, .event-title { font-size: 16px; }
+    .event-notes { font-size: 15px; }
+    .event-actions button { font-size: 14px; }
+    .empty-state { font-size: 16px; }
+    .storage-hint { font-size: 14px; }
+    .storage-message { font-size: 15px; }
+    .close-dialog { min-height: 42px; font-size: 14px; }
+    .dialog-content h2 { font-size: 26px; }
+    .field label { font-size: 15px; }
+    .field input, .field textarea, .field select, .content-select-button { font-size: 16px; }
+    .content-select-button { min-height: 48px; }
+    .content-option { min-height: 38px; font-size: 16px; }
+    .dialog-actions button { min-height: 46px; font-size: 16px; }
+
+    @media (max-width: 760px) {
+      .app { width: min(100% - 12px, 600px); margin: 6px auto 2px; }
+      .topbar { gap: 12px; padding: 12px 16px; }
+      .brand { gap: 10px; }
+      .brand-mark { width: 44px; height: 44px; font-size: 22px; }
+      .brand h1 { font-size: 28px; }
+      .toolbar button { min-height: 40px; padding: 0 12px; font-size: 14px; }
+      .toolbar .nav-button { width: 40px; font-size: 22px; }
+      .calendar-area { padding: 12px 10px 8px; }
+      .month-heading { gap: 8px; margin-bottom: 12px; }
+      .month-mode-toggle button { min-height: 32px; padding: 0 8px; font-size: 11px; }
+      .month-heading h2 { font-size: 28px; }
+      .month-heading span { font-size: 14px; }
+      .summary { gap: 6px; margin-bottom: 12px; }
+      .summary-card { padding: 8px 7px; }
+      .summary-card span { font-size: 12px; }
+      .summary-card strong { margin-top: 5px; font-size: 15px; }
+      .weekday { padding-bottom: 8px; font-size: 14px; }
+      .day { min-height: 72px; padding: 5px 2px 3px; }
+      .day-number { width: 40px; height: 40px; font-size: 20px; }
+      .day-money { gap: 2px; margin-top: 3px; font-size: 10px; }
+      .event-count { margin-top: 2px; font-size: 11px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="database-setup" id="database-setup" aria-labelledby="database-setup-heading" hidden>
+      <h2 id="database-setup-heading">공동 달력 연결</h2>
+      <p>설정된 데이터베이스에 자동으로 연결됩니다. 연결 오류가 나오면 supabase-schema.sql을 실행한 뒤 다시 시도하고, 아래 공유 링크를 다른 분들에게 보내면 로그인 없이 같은 달력을 사용할 수 있습니다.</p>
+      <p class="public-access-warning">완전 공개 달력입니다. 누구나 내역과 호실의 이름·전화번호를 보고 수정할 수 있습니다. 공개해도 괜찮은 정보만 입력하세요. 삭제한 내용은 복구할 수 없습니다.</p>
+      <button class="add-button" id="download-local-data" type="button" hidden>이 브라우저의 기존 내역 백업</button>
+      <form id="database-config-form">
+        <div class="field">
+          <label for="database-url">Supabase Project URL</label>
+          <input id="database-url" type="url" autocomplete="url" required placeholder="https://프로젝트ID.supabase.co">
+        </div>
+        <div class="field">
+          <label for="database-key">Publishable key 또는 anon key</label>
+          <input id="database-key" type="text" autocomplete="off" required placeholder="Supabase 공개 키">
+        </div>
+        <p class="storage-hint">공개용 키만 입력하세요. service_role 키는 사용할 수 없습니다.</p>
+        <div class="database-actions">
+          <button class="save-button" type="submit">공동 달력 연결</button>
+          <button id="cancel-database-setup" type="button" hidden>달력으로 돌아가기</button>
+        </div>
+      </form>
+      <p class="database-message" id="database-message" role="status" aria-live="polite" hidden></p>
+    </section>
+
+    <div id="calendar-shell" hidden>
+      <div class="connection-bar">
+        <span id="connection-status" role="status">공동 달력 연결 중</span>
+        <button id="copy-share-link" type="button">공유 링크 복사</button>
+        <button id="open-room-settings" type="button">호실 설정</button>
+      </div>
+      <div class="shared-import" id="shared-import" hidden>
+        <p id="shared-import-description"></p>
+        <div class="shared-import-actions">
+          <button class="add-button" id="import-local-data" type="button">이 브라우저 내역 가져오기</button>
+        </div>
+      </div>
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">▦</div>
+        <div><h1>미성달력</h1></div>
+      </div>
+      <nav class="toolbar" aria-label="달력 이동">
+        <button class="nav-button" id="previous-month" type="button" aria-label="이전 달">‹</button>
+        <button class="nav-button" id="next-month" type="button" aria-label="다음 달">›</button>
+        <button class="today-button" id="go-today" type="button">오늘</button>
+      </nav>
+    </header>
+
+    <div class="workspace">
+      <section class="calendar-area" aria-label="월간 달력">
+        <div class="month-heading">
+          <div class="month-title-group">
+            <h2 id="month-title"></h2>
+            <span id="year-label"></span>
+          </div>
+          <div class="month-mode-toggle" role="group" aria-label="달력 표시 모드">
+            <button id="calendar-mode-button" type="button" aria-pressed="true">달력 모드</button>
+            <button id="room-mode-button" type="button" aria-pressed="false">호실 모드</button>
+          </div>
+        </div>
+        <section class="summary" aria-label="이번 달 합계">
+          <div class="summary-card income"><span>이번 달 수입</span><strong id="monthly-income">₩0</strong></div>
+          <div class="summary-card expense"><span>이번 달 지출</span><strong id="monthly-expense">₩0</strong></div>
+          <div class="summary-card balance"><span>이번 달 합계</span><strong id="monthly-balance">₩0</strong></div>
+        </section>
+        <div class="calendar-grid" id="weekday-row" aria-hidden="true"></div>
+        <div class="calendar-grid" id="calendar-grid"></div>
+        <section class="room-mode-view" id="room-mode-view" aria-label="이번 달 호실별 내역" hidden>
+          <p class="room-income-legend"><span aria-hidden="true">●</span>이번 달 수입이 있는 호실</p>
+          <div class="room-select-grid" id="room-select-grid" role="group" aria-label="전체 또는 호실 선택"></div>
+          <div class="room-card-grid" id="room-card-grid"></div>
+        </section>
+        <button class="add-button month-events-toggle" id="month-events-toggle" type="button" aria-expanded="false" aria-controls="month-event-section">이번 달 전체 내역 보기</button>
+        <section class="month-event-section" id="month-event-section" aria-labelledby="month-event-heading" hidden>
+          <h2 id="month-event-heading"></h2>
+          <div class="month-event-list" id="month-event-list"></div>
+        </section>
+        <button class="add-button month-events-toggle" id="history-toggle" type="button" aria-expanded="false" aria-controls="history-section">호실별 내역 조회</button>
+        <section class="history-section" id="history-section" aria-labelledby="history-heading" hidden>
+          <h2 id="history-heading">호실별 내역 조회</h2>
+          <p class="history-description">최근 12개월 내역이 기본으로 표시됩니다. 호실·이름·전화번호·입주일·보증금·월세·내역 제목·메모를 검색할 수 있어요.</p>
+          <div class="history-filters">
+            <div class="history-filter">
+              <label for="history-room">호실</label>
+              <select id="history-room">
+                <option value="all">전체 호실</option>
+                <option value="201호">201호</option><option value="202호">202호</option><option value="203호">203호</option><option value="204호">204호</option><option value="205호">205호</option>
+                <option value="301호">301호</option><option value="302호">302호</option><option value="303호">303호</option><option value="304호">304호</option><option value="305호">305호</option>
+                <option value="401호">401호</option><option value="402호">402호</option><option value="403호">403호</option><option value="405호">405호</option><option value="406호">406호</option>
+              </select>
+            </div>
+            <div class="history-filter">
+              <label for="history-kind">내역 종류</label>
+              <select id="history-kind">
+                <option value="all">수입·지출·메모 전체</option>
+                <option value="income">수입</option>
+                <option value="expense">지출</option>
+                <option value="memo">메모 내역</option>
+              </select>
+            </div>
+            <div class="history-filter">
+              <label for="history-start-month">시작 월</label>
+              <div class="history-period-selects">
+                <select id="history-start-year" aria-label="시작 연도"></select>
+                <select id="history-start-month" aria-label="시작 월"></select>
+              </div>
+            </div>
+            <div class="history-filter">
+              <label for="history-end-month">종료 월</label>
+              <div class="history-period-selects">
+                <select id="history-end-year" aria-label="종료 연도"></select>
+                <select id="history-end-month" aria-label="종료 월"></select>
+              </div>
+            </div>
+          </div>
+          <div class="history-actions">
+            <p class="history-summary" id="history-summary" role="status" aria-live="polite"></p>
+            <div class="history-search">
+              <label for="history-search-input">내용 검색</label>
+              <input id="history-search-input" type="search" role="combobox" aria-autocomplete="list" aria-controls="history-search-results" aria-expanded="false" autocomplete="off" placeholder="호실·이름·전화번호·입주일·보증금·월세 검색">
+              <div class="history-search-results" id="history-search-results" role="listbox" hidden></div>
+              <p class="history-search-status" id="history-search-status" role="status" aria-live="polite" hidden></p>
+            </div>
+            <button class="add-button" id="history-one-year" type="button">최근 12개월로 보기</button>
+          </div>
+          <div class="history-list" id="history-list"></div>
+        </section>
+        <details class="data-tools">
+          <summary>기타 설정 및 백업</summary>
+          <div class="data-tools-actions">
+            <button class="add-button" id="choose-import-file" type="button">백업 파일 가져오기</button>
+            <button class="add-button" id="change-database" type="button">연결 설정</button>
+            <input id="import-data-file" type="file" accept="application/json,.json" hidden>
+          </div>
+        </details>
+      </section>
+      </div>
+    </div>
+  </main>
+
+  <dialog id="day-dialog" aria-labelledby="selected-date">
+    <div class="dialog-content">
+        <div class="agenda-header">
+          <div>
+            <p>날짜별 내역</p>
+            <h2 id="selected-date"></h2>
+          </div>
+          <button class="close-dialog" id="close-day-dialog" type="button">닫기</button>
+        </div>
+        <div class="event-list" id="day-event-list"></div>
+        <button class="add-button" id="add-event" type="button">＋ 내역 추가</button>
+        <p class="storage-hint">내역은 공동 달력에 저장되어 링크를 가진 분들과 공유됩니다.</p>
+        <p class="storage-message" id="storage-message" role="status" hidden></p>
+    </div>
+  </dialog>
+
+  <dialog id="event-dialog">
+    <form class="dialog-content" id="event-form">
+      <h2 id="event-form-heading">새 내역</h2>
+      <div class="field">
+        <label for="event-date">날짜</label>
+        <input id="event-date" name="entry-date" type="date" required>
+      </div>
+      <div class="field">
+        <label for="event-type">구분</label>
+        <select id="event-type" name="type" required>
+          <option value="income">수입</option>
+          <option value="expense">지출</option>
+        </select>
+      </div>
+      <div class="field">
+        <label id="event-title-label" for="event-title-button">호실</label>
+        <input id="event-title" name="title" type="hidden">
+        <button class="content-select-button" id="event-title-button" type="button" role="combobox" aria-labelledby="event-title-label event-title-value" aria-haspopup="listbox" aria-expanded="false" aria-controls="event-title-menu">
+          <span id="event-title-value">호실을 선택해 주세요</span>
+          <span aria-hidden="true">⌄</span>
+        </button>
+        <div id="event-title-menu" role="listbox" aria-labelledby="event-title-label" hidden></div>
+      </div>
+      <div class="field" id="other-title-field" hidden>
+        <label for="other-title-input">기타 내용 (선택)</label>
+        <input id="other-title-input" name="other-title" type="text" maxlength="80" placeholder="내용을 입력해 주세요">
+      </div>
+      <p class="storage-hint" id="other-help" hidden>기타 내용, 금액, 메모 중 하나는 입력해 주세요.</p>
+      <div class="field">
+        <label for="event-amount">금액 (만원)</label>
+        <input id="event-amount" name="amount" type="number" min="0.0001" max="99999999.9999" step="0.0001" inputmode="decimal" required placeholder="예: 1.2">
+      </div>
+      <div class="field">
+        <label for="event-notes">메모 (선택)</label>
+        <textarea id="event-notes" name="notes" maxlength="500" placeholder="내역에 대한 메모를 남겨보세요"></textarea>
+      </div>
+      <p class="storage-message" id="event-validation-message" role="alert" hidden></p>
+      <div class="dialog-actions">
+        <button id="cancel-event" type="button">취소</button>
+        <button class="save-button" type="submit">저장</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="room-settings-dialog" aria-labelledby="room-settings-heading">
+    <form class="dialog-content" id="room-settings-form">
+      <div class="agenda-header">
+        <div>
+          <p>호실 관리</p>
+          <h2 id="room-settings-heading">호실 설정</h2>
+        </div>
+        <button class="close-dialog" id="close-room-settings" type="button">닫기</button>
+      </div>
+      <p class="public-access-warning">공개 안내: 저장한 이름, 전화번호, 입주일, 보증금, 월세는 누구나 볼 수 있고 수정할 수 있습니다.</p>
+      <div class="field">
+        <label for="room-settings-number">호실</label>
+        <select id="room-settings-number" required></select>
+      </div>
+      <div class="field">
+        <label for="room-resident-name-input">거주자 이름</label>
+        <input id="room-resident-name-input" type="text" maxlength="80" autocomplete="off" placeholder="이름을 입력해 주세요">
+      </div>
+      <div class="field">
+        <label for="room-phone-number-input">전화번호</label>
+        <input id="room-phone-number-input" type="text" inputmode="numeric" maxlength="30" autocomplete="tel" placeholder="예: 010-1234-5678">
+      </div>
+      <div class="field">
+        <label for="room-move-in-date-input">입주일</label>
+        <input id="room-move-in-date-input" type="date">
+      </div>
+      <div class="field">
+        <label for="room-deposit-input">보증금 (만원)</label>
+        <input id="room-deposit-input" type="number" min="0" max="99999999" step="0.01" inputmode="decimal" placeholder="예: 5000">
+      </div>
+      <div class="field">
+        <label for="room-monthly-rent-input">월세 (만원)</label>
+        <input id="room-monthly-rent-input" type="number" min="0" max="99999999" step="0.01" inputmode="decimal" placeholder="예: 50">
+      </div>
+      <p class="storage-message" id="room-settings-message" role="alert" hidden></p>
+      <div class="dialog-actions">
+        <button id="cancel-room-settings" type="button">취소</button>
+        <button class="save-button" id="save-room-settings" type="submit">저장</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const weekdayNames = ["일", "월", "화", "수", "목", "금", "토"];
+    const weekdayRow = document.getElementById("weekday-row");
+    const calendarGrid = document.getElementById("calendar-grid");
+    const monthTitle = document.getElementById("month-title");
+    const yearLabel = document.getElementById("year-label");
+    const calendarModeButton = document.getElementById("calendar-mode-button");
+    const roomModeButton = document.getElementById("room-mode-button");
+    const roomModeView = document.getElementById("room-mode-view");
+    const roomSelectGrid = document.getElementById("room-select-grid");
+    const roomCardGrid = document.getElementById("room-card-grid");
+    const selectedDateLabel = document.getElementById("selected-date");
+    const eventList = document.getElementById("day-event-list");
+    const monthlyIncome = document.getElementById("monthly-income");
+    const monthlyExpense = document.getElementById("monthly-expense");
+    const monthlyBalance = document.getElementById("monthly-balance");
+    const monthEventsToggle = document.getElementById("month-events-toggle");
+    const monthEventSection = document.getElementById("month-event-section");
+    const monthEventHeading = document.getElementById("month-event-heading");
+    const monthEventList = document.getElementById("month-event-list");
+    const historyToggle = document.getElementById("history-toggle");
+    const historySection = document.getElementById("history-section");
+    const historyRoom = document.getElementById("history-room");
+    const historyKind = document.getElementById("history-kind");
+    const historyStartYear = document.getElementById("history-start-year");
+    const historyStartMonth = document.getElementById("history-start-month");
+    const historyEndYear = document.getElementById("history-end-year");
+    const historyEndMonth = document.getElementById("history-end-month");
+    const historySummary = document.getElementById("history-summary");
+    const historySearchInput = document.getElementById("history-search-input");
+    const historySearchResults = document.getElementById("history-search-results");
+    const historySearchStatus = document.getElementById("history-search-status");
+    const historyList = document.getElementById("history-list");
+    const storageMessage = document.getElementById("storage-message");
+    const databaseSetup = document.getElementById("database-setup");
+    const databaseConfigForm = document.getElementById("database-config-form");
+    const databaseMessage = document.getElementById("database-message");
+    const databaseUrlInput = document.getElementById("database-url");
+    const databaseKeyInput = document.getElementById("database-key");
+    const cancelDatabaseSetup = document.getElementById("cancel-database-setup");
+    const calendarShell = document.getElementById("calendar-shell");
+    const connectionStatus = document.getElementById("connection-status");
+    const sharedImportBanner = document.getElementById("shared-import");
+    const sharedImportDescription = document.getElementById("shared-import-description");
+    const importLocalDataButton = document.getElementById("import-local-data");
+    const importDataFile = document.getElementById("import-data-file");
+    const downloadLocalDataButton = document.getElementById("download-local-data");
+    const roomSettingsDialog = document.getElementById("room-settings-dialog");
+    const roomSettingsForm = document.getElementById("room-settings-form");
+    const roomSettingsNumber = document.getElementById("room-settings-number");
+    const roomResidentNameInput = document.getElementById("room-resident-name-input");
+    const roomPhoneNumberInput = document.getElementById("room-phone-number-input");
+    const roomMoveInDateInput = document.getElementById("room-move-in-date-input");
+    const roomDepositInput = document.getElementById("room-deposit-input");
+    const roomMonthlyRentInput = document.getElementById("room-monthly-rent-input");
+    const roomSettingsMessage = document.getElementById("room-settings-message");
+    const roomSettingsSaveButton = document.getElementById("save-room-settings");
+    const dayDialog = document.getElementById("day-dialog");
+    const eventDialog = document.getElementById("event-dialog");
+    const eventForm = document.getElementById("event-form");
+    const eventDateInput = document.getElementById("event-date");
+    const eventFormHeading = document.getElementById("event-form-heading");
+    const eventSaveButton = eventForm.querySelector('button[type="submit"]');
+    const eventTitleSelect = document.getElementById("event-title");
+    const eventTitleButton = document.getElementById("event-title-button");
+    const eventTitleValue = document.getElementById("event-title-value");
+    const eventTitleMenu = document.getElementById("event-title-menu");
+    const otherTitleField = document.getElementById("other-title-field");
+    const otherTitleInput = document.getElementById("other-title-input");
+    const otherHelp = document.getElementById("other-help");
+    const eventAmountInput = document.getElementById("event-amount");
+    const eventAmountLabel = document.querySelector('label[for="event-amount"]');
+    const contentOptions = [
+      "201호", "202호", "203호", "204호", "205호",
+      "301호", "302호", "303호", "304호", "305호",
+      "401호", "402호", "403호", "405호", "406호", "기타"
+    ];
+    const roomNumbers = contentOptions.filter((value) => value !== "기타");
+    roomNumbers.forEach((roomNumber) => {
+      const option = document.createElement("option");
+      option.value = roomNumber;
+      option.textContent = roomNumber;
+      roomSettingsNumber.append(option);
+    });
+    const eventValidationMessage = document.getElementById("event-validation-message");
+    const today = new Date();
+    let visibleMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    let selectedDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    let monthViewMode = "calendar";
+    let selectedRoomView = "all";
+    let events = {};
+    let localEventsToImport = {};
+    let editingEvent = null;
+    let roomProfiles = {};
+    let supabaseClient = null;
+    let realtimeChannel = null;
+    let currentConfig = null;
+    let activeLoad = 0;
+    const defaultDatabaseConfig = {
+      url: "https://buwsyfnaymlpczltthkr.supabase.co",
+      key: "sb_publishable_owZUyw4RSZDoaHHqbKXoxg_BNCQ1TpP"
+    };
+    const databaseConfigKey = "misung-calendar-public-database";
+
+    const pad = (number) => String(number).padStart(2, "0");
+    const dateKey = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+    const sameDate = (left, right) => dateKey(left) === dateKey(right);
+    const formatWon = (amount) => new Intl.NumberFormat("ko-KR", {
+      style: "currency", currency: "KRW", maximumFractionDigits: 0
+    }).format(amount);
+    const formatTenThousandWon = (amount) => `${new Intl.NumberFormat("ko-KR", {
+      maximumFractionDigits: 4
+    }).format(amount / 10000)}만원`;
+    function isValidDateKey(value) {
+      if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+      const [year, month, day] = value.split("-").map(Number);
+      return dateKey(new Date(year, month - 1, day)) === value;
+    }
+    function formatPhoneNumber(value) {
+      const digits = String(value || "").replace(/\D/g, "");
+      if (!digits) return "";
+      if (digits.startsWith("02")) {
+        if (digits.length <= 2) return digits;
+        const middleLength = digits.length >= 10 ? 4 : 3;
+        return [digits.slice(0, 2), digits.slice(2, 2 + middleLength), digits.slice(2 + middleLength)]
+          .filter(Boolean)
+          .join("-");
+      }
+      if (digits.startsWith("010")) {
+        if (digits.length <= 3) return digits;
+        if (digits.length <= 7) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+        return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+      }
+      if (digits.length <= 3) return digits;
+      const middleLength = digits.length >= 11 ? 4 : 3;
+      return [digits.slice(0, 3), digits.slice(3, 3 + middleLength), digits.slice(3 + middleLength)]
+        .filter(Boolean)
+        .join("-");
+    }
+    function getRoomProfileDetails(roomNumber) {
+      const profile = roomProfiles[roomNumber];
+      if (!profile) return [];
+      const details = [];
+      if (profile.phoneNumber) details.push(`전화 ${profile.phoneNumber}`);
+      if (profile.moveInDate) {
+        const [year, month, day] = profile.moveInDate.split("-").map(Number);
+        details.push(`입주 ${year}년 ${month}월 ${day}일`);
+      }
+      if (profile.depositAmount !== null) details.push(`보증금 ${formatTenThousandWon(profile.depositAmount)}`);
+      if (profile.monthlyRent !== null) details.push(`월세 ${formatTenThousandWon(profile.monthlyRent)}`);
+      return details;
+    }
+    const monthKey = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}`;
+    function updateHistoryYearOptions() {
+      const years = new Set();
+      for (let year = today.getFullYear() - 11; year <= today.getFullYear(); year += 1) {
+        years.add(year);
+      }
+      Object.keys(events).forEach((key) => {
+        const match = key.match(/^(\d{4})-\d{2}-\d{2}$/);
+        if (match) years.add(Number(match[1]));
+      });
+      [historyStartYear, historyEndYear].forEach((select) => {
+        const selectedYear = Number(select.value) || today.getFullYear();
+        years.add(selectedYear);
+        const sortedYears = Array.from(years).sort((left, right) => right - left);
+        select.replaceChildren();
+        sortedYears.forEach((year) => {
+          const option = document.createElement("option");
+          option.value = String(year);
+          option.textContent = `${year}년`;
+          select.append(option);
+        });
+        select.value = String(selectedYear);
+      });
+    }
+    function populateHistoryMonths() {
+      [historyStartMonth, historyEndMonth].forEach((select) => {
+        for (let month = 1; month <= 12; month += 1) {
+          const option = document.createElement("option");
+          option.value = String(month);
+          option.textContent = `${month}월`;
+          select.append(option);
+        }
+      });
+    }
+    function setHistoryToTwelveMonths() {
+      const start = new Date(today.getFullYear(), today.getMonth() - 11, 1);
+      historyStartYear.value = String(start.getFullYear());
+      historyStartMonth.value = String(start.getMonth() + 1);
+      historyEndYear.value = String(today.getFullYear());
+      historyEndMonth.value = String(today.getMonth() + 1);
+    }
+    populateHistoryMonths();
+    updateHistoryYearOptions();
+    setHistoryToTwelveMonths();
+
+    try {
+      const savedEvents = localStorage.getItem("today-calendar-events");
+      events = savedEvents ? JSON.parse(savedEvents) : {};
+      if (!events || typeof events !== "object" || Array.isArray(events)) events = {};
+      localEventsToImport = events;
+      events = {};
+    } catch (error) {
+      setDatabaseMessage("기존 브라우저 내역을 읽지 못했습니다. 원본 데이터는 변경하지 않았습니다.", true);
+      console.error("일정 불러오기 실패:", error);
+    }
+
+    weekdayNames.forEach((name) => {
+      const label = document.createElement("div");
+      label.className = "weekday";
+      label.textContent = name;
+      weekdayRow.append(label);
+    });
+
+    function setDatabaseMessage(message, isError = false) {
+      databaseMessage.textContent = message;
+      databaseMessage.hidden = !message;
+      databaseMessage.classList.toggle("error", isError);
+    }
+
+    function setConnectionStatus(message, isError = false) {
+      connectionStatus.textContent = message;
+      connectionStatus.style.color = isError ? "#ff929c" : "";
+    }
+
+    function loadDatabaseConfig() {
+      const params = new URLSearchParams(window.location.search);
+      const sharedUrl = params.get("calendar_db_url");
+      const sharedKey = params.get("calendar_db_key");
+      if (sharedUrl && sharedKey) {
+        const sharedConfig = { url: sharedUrl, key: sharedKey };
+        try {
+          localStorage.setItem(databaseConfigKey, JSON.stringify(sharedConfig));
+        } catch (error) {
+          console.error("공동 달력 설정을 브라우저에 저장하지 못했습니다:", error);
+        }
+        return sharedConfig;
+      }
+
+      try {
+        const saved = localStorage.getItem(databaseConfigKey);
+        const config = saved ? JSON.parse(saved) : null;
+        if (config && typeof config.url === "string" && typeof config.key === "string") return config;
+      } catch (error) {
+        console.error("저장된 공동 달력 설정을 읽지 못했습니다:", error);
+        setDatabaseMessage("저장된 연결 설정을 읽지 못했습니다. Project URL과 공개 키를 다시 입력해 주세요.", true);
+      }
+      return defaultDatabaseConfig;
+    }
+
+    function renderDatabaseRows(rows) {
+      const nextEvents = {};
+      rows.forEach((row) => {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(row.entry_date)) {
+          throw new Error("공동 달력에 올바르지 않은 날짜가 있습니다.");
+        }
+        if (!["income", "expense"].includes(row.type)) {
+          throw new Error("공동 달력에 올바르지 않은 수입·지출 구분이 있습니다.");
+        }
+        const amount = row.amount === null ? null : Number(row.amount);
+        if (amount !== null && (!Number.isSafeInteger(amount) || amount <= 0)) {
+          throw new Error("공동 달력에 올바르지 않은 금액이 있습니다.");
+        }
+        const entry = {
+          id: String(row.id),
+          title: String(row.title),
+          type: row.type,
+          notes: String(row.notes || "")
+        };
+        if (amount !== null) entry.amount = amount;
+        if (!Array.isArray(nextEvents[row.entry_date])) nextEvents[row.entry_date] = [];
+        nextEvents[row.entry_date].push(entry);
+      });
+      events = nextEvents;
+    }
+
+    function renderDatabaseRoomRows(rows) {
+      const nextRoomProfiles = {};
+      rows.forEach((row) => {
+        const roomNumber = String(row.room_number || "");
+        if (!roomNumbers.includes(roomNumber)) {
+          throw new Error("공동 달력에 올바르지 않은 호실 설정이 있습니다.");
+        }
+        const residentName = String(row.resident_name || "");
+        const phoneNumber = formatPhoneNumber(row.phone_number);
+        if (residentName.length > 80) {
+          throw new Error(`${roomNumber} 거주자 이름이 너무 깁니다.`);
+        }
+        if (phoneNumber.length > 30) {
+          throw new Error(`${roomNumber} 전화번호가 너무 깁니다.`);
+        }
+        if (row.move_in_date !== null && !isValidDateKey(row.move_in_date)) {
+          throw new Error(`${roomNumber} 입주일이 올바르지 않습니다.`);
+        }
+        const depositAmount = row.deposit_amount === null ? null : Number(row.deposit_amount);
+        const monthlyRent = row.monthly_rent === null ? null : Number(row.monthly_rent);
+        if (depositAmount !== null && (!Number.isSafeInteger(depositAmount) || depositAmount < 0)) {
+          throw new Error(`${roomNumber} 보증금이 올바르지 않습니다.`);
+        }
+        if (monthlyRent !== null && (!Number.isSafeInteger(monthlyRent) || monthlyRent < 0)) {
+          throw new Error(`${roomNumber} 월세가 올바르지 않습니다.`);
+        }
+        nextRoomProfiles[roomNumber] = {
+          residentName,
+          phoneNumber,
+          moveInDate: row.move_in_date,
+          depositAmount,
+          monthlyRent
+        };
+      });
+      roomProfiles = nextRoomProfiles;
+    }
+
+    async function refreshSharedEvents() {
+      const loadId = ++activeLoad;
+      const { data, error } = await supabaseClient
+        .from("shared_calendar_entries")
+        .select("id, entry_date, title, type, amount, notes")
+        .order("entry_date", { ascending: true });
+      if (error) throw error;
+      if (!Array.isArray(data)) throw new Error("공동 달력에서 내역 목록을 받지 못했습니다.");
+      if (loadId !== activeLoad) return false;
+      renderDatabaseRows(data);
+      render();
+      return true;
+    }
+
+    async function refreshRoomProfiles() {
+      const { data, error } = await supabaseClient
+        .from("shared_calendar_rooms")
+        .select("room_number, resident_name, phone_number, move_in_date, deposit_amount, monthly_rent")
+        .order("room_number", { ascending: true });
+      if (error) throw error;
+      if (!Array.isArray(data)) throw new Error("공동 데이터베이스에서 호실 설정을 받지 못했습니다.");
+      renderDatabaseRoomRows(data);
+    }
+
+    function subscribeToSharedEvents() {
+      if (realtimeChannel) {
+        void supabaseClient.removeChannel(realtimeChannel);
+      }
+      realtimeChannel = supabaseClient
+        .channel("public-calendar-entries")
+        .on("postgres_changes", {
+          event: "*",
+          schema: "public",
+          table: "shared_calendar_entries"
+        }, () => {
+          refreshSharedEvents()
+            .then((loaded) => {
+              if (loaded) setConnectionStatus("공동 달력 · 변경사항 동기화됨");
+            })
+            .catch((error) => {
+              console.error("공동 달력 새로고침 실패:", error);
+              setConnectionStatus(`새로고침 실패: ${error.message}`, true);
+            });
+        })
+        .on("postgres_changes", {
+          event: "*",
+          schema: "public",
+          table: "shared_calendar_rooms"
+        }, () => {
+          refreshRoomProfiles()
+            .then(() => {
+              render();
+              setConnectionStatus("호실 설정 변경사항을 동기화했습니다.");
+            })
+            .catch((error) => {
+              console.error("호실 설정 새로고침 실패:", error);
+              setConnectionStatus(`호실 설정 새로고침 실패: ${error.message}`, true);
+            });
+        })
+        .subscribe((status, error) => {
+          if (status === "SUBSCRIBED") setConnectionStatus("공동 달력 · 실시간 연결됨");
+          if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+            setConnectionStatus(`실시간 연결 실패${error?.message ? `: ${error.message}` : ""}`, true);
+          }
+        });
+    }
+
+    function countRecords(source) {
+      return Object.values(source).reduce((count, items) => {
+        return count + (Array.isArray(items) ? items.length : 0);
+      }, 0);
+    }
+
+    function updateLocalImportBanner() {
+      const recordCount = countRecords(localEventsToImport);
+      downloadLocalDataButton.hidden = recordCount === 0;
+      let alreadyImported = false;
+      try {
+        alreadyImported = localStorage.getItem(`today-calendar-public-imported:${new URL(currentConfig.url).hostname}`) === "true";
+      } catch (error) {
+        console.error("기존 내역 가져오기 상태를 읽지 못했습니다:", error);
+      }
+      sharedImportBanner.hidden = recordCount === 0 || alreadyImported;
+      sharedImportDescription.textContent = `이 기기에 기존 내역 ${recordCount}건이 있습니다. 공동 달력에 가져오면 링크를 아는 모든 분이 볼 수 있습니다. 기존 브라우저 데이터는 삭제되지 않습니다.`;
+    }
+
+    function setRoomSettingsMessage(message, isError = false) {
+      roomSettingsMessage.textContent = message;
+      roomSettingsMessage.hidden = !message;
+      roomSettingsMessage.classList.toggle("error", isError);
+    }
+
+    function fillRoomSettingsForm() {
+      const profile = roomProfiles[roomSettingsNumber.value] || {
+        residentName: "",
+        phoneNumber: "",
+        moveInDate: null,
+        depositAmount: null,
+        monthlyRent: null
+      };
+      roomResidentNameInput.value = profile.residentName;
+      roomPhoneNumberInput.value = formatPhoneNumber(profile.phoneNumber);
+      roomMoveInDateInput.value = profile.moveInDate || "";
+      roomDepositInput.value = profile.depositAmount === null ? "" : String(profile.depositAmount / 10000);
+      roomMonthlyRentInput.value = profile.monthlyRent === null ? "" : String(profile.monthlyRent / 10000);
+      setRoomSettingsMessage("");
+    }
+
+    downloadLocalDataButton.addEventListener("click", () => {
+      const blob = new Blob([JSON.stringify(localEventsToImport, null, 2)], { type: "application/json" });
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = `calendar-backup-${dateKey(today)}.json`;
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    });
+
+    async function connectToSharedDatabase(config) {
+      const connectButton = databaseConfigForm.querySelector('button[type="submit"]');
+      databaseSetup.hidden = false;
+      calendarShell.hidden = true;
+      connectButton.disabled = true;
+      setDatabaseMessage("공동 달력에 연결하는 중입니다.");
+      try {
+        if (!window.supabase?.createClient) {
+          throw new Error("데이터베이스 연결 도구를 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.");
+        }
+        const parsedUrl = new URL(config.url);
+        if (parsedUrl.protocol !== "https:" || !parsedUrl.hostname.endsWith(".supabase.co") || !config.key) {
+          throw new Error("Supabase Project URL과 공개 Publishable/anon key를 확인해 주세요.");
+        }
+        const client = window.supabase.createClient(config.url, config.key, {
+          auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+        });
+        const { data, error } = await client
+          .from("shared_calendar_entries")
+          .select("id, entry_date, title, type, amount, notes")
+          .order("entry_date", { ascending: true });
+        if (error) throw error;
+        if (!Array.isArray(data)) throw new Error("공동 달력에서 내역 목록을 받지 못했습니다.");
+        const { data: roomData, error: roomError } = await client
+          .from("shared_calendar_rooms")
+          .select("room_number, resident_name, phone_number, move_in_date, deposit_amount, monthly_rent")
+          .order("room_number", { ascending: true });
+        if (roomError) throw roomError;
+        if (!Array.isArray(roomData)) throw new Error("공동 데이터베이스에서 호실 설정을 받지 못했습니다.");
+
+        supabaseClient = client;
+        currentConfig = config;
+        try {
+          localStorage.setItem(databaseConfigKey, JSON.stringify(config));
+        } catch (storageError) {
+          console.error("공동 달력 설정을 브라우저에 저장하지 못했습니다:", storageError);
+        }
+        renderDatabaseRows(data);
+        renderDatabaseRoomRows(roomData);
+        databaseSetup.hidden = true;
+        calendarShell.hidden = false;
+        databaseConfigForm.querySelector("#cancel-database-setup").hidden = false;
+        setDatabaseMessage("");
+        render();
+        updateLocalImportBanner();
+        subscribeToSharedEvents();
+      } catch (error) {
+        databaseSetup.hidden = false;
+        calendarShell.hidden = true;
+        databaseConfigForm.querySelector("#cancel-database-setup").hidden = false;
+        setDatabaseMessage(`연결하지 못했습니다: ${error.message}`, true);
+        setConnectionStatus("공동 달력 연결 실패", true);
+        console.error("공동 달력 연결 실패:", error);
+      } finally {
+        connectButton.disabled = false;
+      }
+    }
+
+    databaseConfigForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const config = {
+        url: databaseUrlInput.value.trim().replace(/\/+$/, ""),
+        key: databaseKeyInput.value.trim()
+      };
+      void connectToSharedDatabase(config);
+    });
+
+    document.getElementById("change-database").addEventListener("click", () => {
+      databaseUrlInput.value = currentConfig?.url || "";
+      databaseKeyInput.value = currentConfig?.key || "";
+      databaseSetup.hidden = false;
+      calendarShell.hidden = true;
+      databaseConfigForm.querySelector("#cancel-database-setup").hidden = false;
+      setDatabaseMessage("");
+    });
+    cancelDatabaseSetup.addEventListener("click", () => {
+      if (!supabaseClient) return;
+      databaseSetup.hidden = true;
+      calendarShell.hidden = false;
+    });
+    document.getElementById("copy-share-link").addEventListener("click", async () => {
+      if (!currentConfig) return;
+      if (window.location.protocol === "file:") {
+        setConnectionStatus("사이트를 GitHub Pages에 올린 뒤 공유 링크를 복사하세요.", true);
+        return;
+      }
+      const shareUrl = new URL(window.location.href);
+      shareUrl.searchParams.set("calendar_db_url", currentConfig.url);
+      shareUrl.searchParams.set("calendar_db_key", currentConfig.key);
+      try {
+        await navigator.clipboard.writeText(shareUrl.toString());
+        setConnectionStatus("공유 링크를 복사했습니다. 로그인 없이 열 수 있습니다.");
+      } catch (error) {
+        setConnectionStatus(`링크를 자동 복사하지 못했습니다: ${shareUrl.toString()}`, true);
+        console.error("공동 달력 링크 복사 실패:", error);
+      }
+    });
+    document.getElementById("open-room-settings").addEventListener("click", () => {
+      roomSettingsNumber.value = roomNumbers.includes(selectedRoomView) ? selectedRoomView : roomNumbers[0];
+      fillRoomSettingsForm();
+      roomSettingsDialog.showModal();
+    });
+    roomSettingsNumber.addEventListener("change", fillRoomSettingsForm);
+    roomPhoneNumberInput.addEventListener("input", () => {
+      const input = roomPhoneNumberInput;
+      const cursorPosition = input.selectionStart ?? input.value.length;
+      const digitsBeforeCursor = input.value.slice(0, cursorPosition).replace(/\D/g, "").length;
+      const formatted = formatPhoneNumber(input.value);
+      if (input.value === formatted) return;
+      input.value = formatted;
+      let nextCursorPosition = 0;
+      let digitsSeen = 0;
+      while (nextCursorPosition < formatted.length && digitsSeen < digitsBeforeCursor) {
+        if (/\d/.test(formatted[nextCursorPosition])) digitsSeen += 1;
+        nextCursorPosition += 1;
+      }
+      input.setSelectionRange(nextCursorPosition, nextCursorPosition);
+    });
+    document.getElementById("close-room-settings").addEventListener("click", () => roomSettingsDialog.close());
+    document.getElementById("cancel-room-settings").addEventListener("click", () => roomSettingsDialog.close());
+    roomSettingsDialog.addEventListener("click", (event) => {
+      if (event.target === roomSettingsDialog) roomSettingsDialog.close();
+    });
+    roomSettingsForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const roomNumber = roomSettingsNumber.value;
+      const residentName = roomResidentNameInput.value.trim();
+      const phoneNumber = formatPhoneNumber(roomPhoneNumberInput.value);
+      roomPhoneNumberInput.value = phoneNumber;
+      const moveInDate = roomMoveInDateInput.value || null;
+      const parseAmount = (input, label) => {
+        const value = input.value.trim();
+        if (!value) return null;
+        const amountInWon = Number(value) * 10000;
+        const roundedAmount = Math.round(amountInWon);
+        if (!Number.isFinite(amountInWon) || Number(value) < 0
+          || Number(value) > 99999999 || !Number.isSafeInteger(roundedAmount)
+          || Math.abs(amountInWon - roundedAmount) > 0.000001) {
+          throw new Error(`${label}을(를) 0 이상의 만원 단위 숫자로 입력해 주세요.`);
+        }
+        return roundedAmount;
+      };
+
+      let depositAmount;
+      let monthlyRent;
+      try {
+        if (!roomNumbers.includes(roomNumber)) throw new Error("호실을 선택해 주세요.");
+        if (residentName.length > 80) throw new Error("이름은 80자 이내로 입력해 주세요.");
+        if (phoneNumber.length > 30) throw new Error("전화번호는 30자 이내로 입력해 주세요.");
+        if (moveInDate && !isValidDateKey(moveInDate)) throw new Error("올바른 입주일을 선택해 주세요.");
+        depositAmount = parseAmount(roomDepositInput, "보증금");
+        monthlyRent = parseAmount(roomMonthlyRentInput, "월세");
+      } catch (error) {
+        setRoomSettingsMessage(error.message, true);
+        return;
+      }
+
+      const profile = { residentName, phoneNumber, moveInDate, depositAmount, monthlyRent };
+      roomSettingsSaveButton.disabled = true;
+      setRoomSettingsMessage("호실 정보를 저장하는 중입니다.");
+      try {
+        const { data, error } = await supabaseClient
+          .from("shared_calendar_rooms")
+          .upsert({
+            room_number: roomNumber,
+            resident_name: residentName,
+            phone_number: phoneNumber,
+            move_in_date: moveInDate,
+            deposit_amount: depositAmount,
+            monthly_rent: monthlyRent,
+            updated_at: new Date().toISOString()
+          }, { onConflict: "room_number" })
+          .select("room_number");
+        if (error) throw error;
+        if (!Array.isArray(data) || !data.length) throw new Error("호실 정보를 저장하지 못했습니다. 다시 시도해 주세요.");
+        roomProfiles[roomNumber] = profile;
+        render();
+        roomSettingsDialog.close();
+        setConnectionStatus(`${roomNumber} 호실 정보를 저장했습니다.`);
+      } catch (error) {
+        setRoomSettingsMessage(`저장하지 못했습니다: ${error.message}`, true);
+        console.error("호실 정보 저장 실패:", error);
+      } finally {
+        roomSettingsSaveButton.disabled = false;
+      }
+    });
+
+    async function importEntries(source, button, importedFromBrowser) {
+      const rows = [];
+      Object.entries(source).forEach(([key, dayEvents]) => {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(key) || !Array.isArray(dayEvents)) return;
+        dayEvents.forEach((entry, index) => {
+          if (!entry || typeof entry !== "object") return;
+          const amount = Number(entry.amount);
+          rows.push({
+            id: String(entry.id || `local-${key}-${index}`),
+            entry_date: key,
+            title: String(entry.title || "기타"),
+            type: entry.type === "income" ? "income" : "expense",
+            amount: Number.isSafeInteger(amount) && amount > 0 ? amount : null,
+            notes: String(entry.notes || "")
+          });
+        });
+      });
+      if (!rows.length) {
+        setConnectionStatus("가져올 수 있는 내역이 없습니다.", true);
+        return;
+      }
+      button.disabled = true;
+      setConnectionStatus("기존 내역을 공동 달력으로 가져오는 중");
+      try {
+        for (let offset = 0; offset < rows.length; offset += 500) {
+          const { error } = await supabaseClient
+            .from("shared_calendar_entries")
+            .upsert(rows.slice(offset, offset + 500), {
+              onConflict: "id",
+              ignoreDuplicates: true
+            });
+          if (error) throw error;
+        }
+        await refreshSharedEvents();
+        if (importedFromBrowser) {
+          try {
+            localStorage.setItem(`today-calendar-public-imported:${new URL(currentConfig.url).hostname}`, "true");
+          } catch (storageError) {
+            console.error("가져오기 완료 상태를 저장하지 못했습니다:", storageError);
+          }
+          updateLocalImportBanner();
+        }
+        setConnectionStatus(`${rows.length}건을 가져왔습니다. 브라우저의 원본은 그대로 남아 있습니다.`);
+      } catch (error) {
+        setConnectionStatus(`기존 내역을 가져오지 못했습니다: ${error.message}`, true);
+        console.error("기존 브라우저 내역 가져오기 실패:", error);
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    importLocalDataButton.addEventListener("click", () => {
+      void importEntries(localEventsToImport, importLocalDataButton, true);
+    });
+    document.getElementById("choose-import-file").addEventListener("click", () => importDataFile.click());
+    importDataFile.addEventListener("change", async () => {
+      const file = importDataFile.files[0];
+      if (!file) return;
+      try {
+        const parsed = JSON.parse(await file.text());
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+          throw new Error("달력 백업 JSON 형식이 아닙니다.");
+        }
+        await importEntries(parsed, document.getElementById("choose-import-file"), false);
+      } catch (error) {
+        setConnectionStatus(`백업 파일을 가져오지 못했습니다: ${error.message}`, true);
+        console.error("백업 파일 읽기 실패:", error);
+      } finally {
+        importDataFile.value = "";
+      }
+    });
+
+    function renderCalendar() {
+      monthTitle.textContent = `${visibleMonth.getMonth() + 1}월`;
+      yearLabel.textContent = `${visibleMonth.getFullYear()}년`;
+      calendarGrid.replaceChildren();
+
+      const firstDay = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth(), 1);
+      const start = new Date(firstDay.getFullYear(), firstDay.getMonth(), 1 - firstDay.getDay());
+      const daysInMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 0).getDate();
+      const weekCount = Math.ceil((firstDay.getDay() + daysInMonth) / 7);
+      const monthPrefix = `${visibleMonth.getFullYear()}-${pad(visibleMonth.getMonth() + 1)}-`;
+      const totals = Object.entries(events).reduce((sum, [key, entries]) => {
+        if (!key.startsWith(monthPrefix) || !Array.isArray(entries)) return sum;
+        entries.forEach((entry) => {
+          if (!Number.isSafeInteger(entry.amount) || entry.amount < 0) return;
+          if (entry.type === "income") sum.income += entry.amount;
+          if (entry.type === "expense") sum.expense += entry.amount;
+        });
+        return sum;
+      }, { income: 0, expense: 0 });
+      monthlyIncome.textContent = formatTenThousandWon(totals.income);
+      monthlyExpense.textContent = formatTenThousandWon(totals.expense);
+      monthlyBalance.textContent = formatTenThousandWon(totals.income - totals.expense);
+
+      for (let index = 0; index < weekCount * 7; index += 1) {
+        const date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + index);
+        const key = dateKey(date);
+        const dayEvents = Array.isArray(events[key]) ? events[key] : [];
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "day";
+        const detailLabels = dayEvents.map((item) => {
+          const sign = item.type === "income" ? "+" : "−";
+          const amount = Number.isSafeInteger(item.amount) ? ` ${sign}${formatTenThousandWon(item.amount)}` : "";
+          return `${item.title}${amount}`;
+        });
+        button.setAttribute("aria-label", `${date.getMonth() + 1}월 ${date.getDate()}일${dayEvents.length ? `, ${detailLabels.join(", ")}` : ""}`);
+        if (date.getMonth() !== visibleMonth.getMonth()) button.classList.add("outside");
+        if (sameDate(date, today)) button.classList.add("today");
+        if (sameDate(date, selectedDate)) button.classList.add("selected");
+
+        const number = document.createElement("span");
+        number.className = "day-number";
+        number.textContent = date.getDate();
+        button.append(number);
+
+        if (dayEvents.length) {
+          const money = document.createElement("span");
+          money.className = "day-money";
+          dayEvents.slice(0, 3).forEach((item) => {
+            const detail = document.createElement("span");
+            const hasAmount = Number.isSafeInteger(item.amount);
+            detail.className = !hasAmount ? "day-note" : item.type === "income" ? "day-income day-deposit" : "day-expense";
+            const sign = item.type === "income" ? "+" : "−";
+            const amount = hasAmount ? ` ${sign}${formatTenThousandWon(item.amount)}` : "";
+            detail.textContent = `${item.title}${amount}`;
+            detail.title = detail.textContent;
+            money.append(detail);
+          });
+          if (dayEvents.length > 3) {
+            const more = document.createElement("span");
+            more.className = "event-count";
+            more.textContent = `외 ${dayEvents.length - 3}건 더`;
+            money.append(more);
+          }
+          button.append(money);
+        }
+
+        button.addEventListener("click", () => {
+          selectedDate = date;
+          if (date.getMonth() !== visibleMonth.getMonth()) {
+            visibleMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+          }
+          render();
+          downloadLocalDataButton.hidden = countRecords(localEventsToImport) === 0;
+          dayDialog.showModal();
+        });
+        calendarGrid.append(button);
+      }
+      if (!monthEventSection.hidden) renderMonthEvents();
+    }
+
+    function initializeRoomSelector() {
+      if (roomSelectGrid.childElementCount) return;
+      const options = [
+        { value: "all", label: "전체" },
+        ...contentOptions.filter((name) => name !== "기타").map((name) => ({ value: name, label: name }))
+      ];
+      options.forEach(({ value, label }) => {
+        const button = document.createElement("button");
+        button.className = "room-select-button";
+        button.type = "button";
+        button.textContent = label;
+        button.dataset.room = value;
+        button.setAttribute("aria-pressed", String(value === selectedRoomView));
+        button.addEventListener("click", () => {
+          selectedRoomView = value;
+          roomSelectGrid.querySelectorAll(".room-select-button").forEach((option) => {
+            option.setAttribute("aria-pressed", String(option.dataset.room === selectedRoomView));
+          });
+          renderRoomView();
+        });
+        roomSelectGrid.append(button);
+      });
+    }
+
+    function renderRoomView() {
+      initializeRoomSelector();
+      const monthPrefix = `${visibleMonth.getFullYear()}-${pad(visibleMonth.getMonth() + 1)}-`;
+      const grouped = new Map();
+      const roomNames = contentOptions.filter((name) => name !== "기타");
+      const incomeRooms = new Set();
+      Object.entries(events).forEach(([key, dayEvents]) => {
+        if (!key.startsWith(monthPrefix) || !Array.isArray(dayEvents)) return;
+        dayEvents.forEach((event) => {
+          const roomName = roomNames.includes(event.title) ? event.title : "기타";
+          if (!grouped.has(roomName)) grouped.set(roomName, []);
+          grouped.get(roomName).push({ key, event });
+          if (roomName !== "기타" && event.type === "income"
+            && Number.isSafeInteger(event.amount) && event.amount > 0) {
+            incomeRooms.add(roomName);
+          }
+        });
+      });
+      roomSelectGrid.querySelectorAll(".room-select-button").forEach((button) => {
+        const hasIncome = incomeRooms.has(button.dataset.room);
+        button.setAttribute("aria-pressed", String(button.dataset.room === selectedRoomView));
+        button.classList.toggle("has-income", hasIncome);
+        if (hasIncome) button.setAttribute("aria-label", `${button.dataset.room}, 이번 달 수입 있음`);
+        else button.removeAttribute("aria-label");
+      });
+
+      roomCardGrid.replaceChildren();
+      const visibleRooms = (selectedRoomView === "all" ? [...roomNames, "기타"] : [selectedRoomView])
+        .filter((name) => grouped.has(name));
+      if (!visibleRooms.length) {
+        const empty = document.createElement("p");
+        empty.className = "room-mode-empty";
+        empty.textContent = selectedRoomView === "all"
+          ? "이번 달에 등록된 내역이 없어요."
+          : `이번 달 ${selectedRoomView}에 등록된 내역이 없어요.`;
+        roomCardGrid.append(empty);
+        return;
+      }
+
+      visibleRooms.forEach((roomName) => {
+        const records = grouped.get(roomName).sort((left, right) => left.key.localeCompare(right.key));
+        const totals = records.reduce((sum, { event }) => {
+          if (!Number.isSafeInteger(event.amount)) return sum;
+          if (event.type === "income") sum.income += event.amount;
+          if (event.type === "expense") sum.expense += event.amount;
+          return sum;
+        }, { income: 0, expense: 0 });
+        const card = document.createElement("article");
+        card.className = "room-card";
+
+        const header = document.createElement("div");
+        header.className = "room-card-header";
+        const heading = document.createElement("h3");
+        heading.textContent = roomName;
+        const profile = roomProfiles[roomName];
+        if (profile?.residentName) {
+          const resident = document.createElement("span");
+          resident.className = "room-resident-name";
+          resident.textContent = profile.residentName;
+          heading.append(resident);
+        }
+        const count = document.createElement("span");
+        count.className = "room-card-count";
+        count.textContent = `${records.length}건`;
+        header.append(heading, count);
+        card.append(header);
+        const profileDetails = getRoomProfileDetails(roomName);
+        if (profileDetails.length) {
+          const details = document.createElement("p");
+          details.className = "room-profile-details";
+          details.textContent = profileDetails.join(" · ");
+          card.append(details);
+        }
+
+        const totalsView = document.createElement("div");
+        totalsView.className = "room-card-totals";
+        [
+          { label: "수입", amount: totals.income, type: "income" },
+          { label: "지출", amount: totals.expense, type: "expense" }
+        ].forEach(({ label, amount, type }) => {
+          const total = document.createElement("div");
+          total.className = `room-card-total ${type}`;
+          const totalLabel = document.createElement("span");
+          totalLabel.textContent = label;
+          const totalAmount = document.createElement("strong");
+          totalAmount.textContent = formatWon(amount);
+          total.append(totalLabel, totalAmount);
+          totalsView.append(total);
+        });
+        card.append(totalsView);
+
+        const entryList = document.createElement("div");
+        entryList.className = "room-entry-list";
+        records.forEach(({ key, event }) => {
+          const [year, month, day] = key.split("-").map(Number);
+          const date = new Date(year, month - 1, day);
+          const entry = document.createElement("button");
+          entry.className = "room-entry";
+          entry.type = "button";
+          const dateLabel = document.createElement("span");
+          dateLabel.className = "room-entry-date";
+          dateLabel.textContent = new Intl.DateTimeFormat("ko-KR", {
+            month: "long", day: "numeric", weekday: "short"
+          }).format(date);
+          const hasAmount = Number.isSafeInteger(event.amount);
+          const kind = document.createElement("span");
+          kind.className = `room-entry-kind ${hasAmount ? event.type : "memo"}`;
+          kind.textContent = !hasAmount
+            ? "메모"
+            : `${event.type === "income" ? "수입" : "지출"} ${event.type === "income" ? "+" : "−"}${formatWon(event.amount)}`;
+          entry.append(dateLabel, kind);
+
+          const details = [];
+          if (roomName === "기타" && event.title && event.title !== "기타") details.push(event.title);
+          if (event.notes) details.push(event.notes);
+          if (details.length) {
+            const detail = document.createElement("span");
+            detail.className = "room-entry-detail";
+            detail.textContent = details.join(" · ");
+            entry.append(detail);
+          }
+          entry.setAttribute("aria-label", `${dateLabel.textContent}, ${roomName}, ${kind.textContent}${details.length ? `, ${details.join(", ")}` : ""}. 날짜별 내역 보기`);
+          entry.addEventListener("click", () => {
+            selectedDate = date;
+            render();
+            downloadLocalDataButton.hidden = countRecords(localEventsToImport) === 0;
+            dayDialog.showModal();
+          });
+          entryList.append(entry);
+        });
+        card.append(entryList);
+        roomCardGrid.append(card);
+      });
+    }
+
+    function setMonthViewMode(mode) {
+      monthViewMode = mode;
+      const isCalendarMode = mode === "calendar";
+      calendarModeButton.setAttribute("aria-pressed", String(isCalendarMode));
+      roomModeButton.setAttribute("aria-pressed", String(!isCalendarMode));
+      weekdayRow.hidden = !isCalendarMode;
+      calendarGrid.hidden = !isCalendarMode;
+      roomModeView.hidden = isCalendarMode;
+      monthEventsToggle.hidden = !isCalendarMode;
+      monthEventSection.hidden = !isCalendarMode || monthEventsToggle.getAttribute("aria-expanded") !== "true";
+      render();
+    }
+
+    function renderMonthEvents() {
+      const monthPrefix = `${visibleMonth.getFullYear()}-${pad(visibleMonth.getMonth() + 1)}-`;
+      const records = [];
+      Object.entries(events).forEach(([key, dayEvents]) => {
+        if (!key.startsWith(monthPrefix) || !Array.isArray(dayEvents)) return;
+        dayEvents.forEach((event) => records.push({ key, event }));
+      });
+      records.sort((left, right) => left.key.localeCompare(right.key));
+
+      monthEventHeading.textContent = `${visibleMonth.getFullYear()}년 ${visibleMonth.getMonth() + 1}월 전체 내역`;
+      monthEventList.replaceChildren();
+      if (!records.length) {
+        const empty = document.createElement("p");
+        empty.className = "empty-state";
+        empty.textContent = "이번 달에 등록된 내역이 없어요.";
+        monthEventList.append(empty);
+        return;
+      }
+
+      records.forEach(({ key, event }) => {
+        const [year, month, day] = key.split("-").map(Number);
+        const date = new Date(year, month - 1, day);
+        const hasAmount = Number.isSafeInteger(event.amount);
+        const isIncome = event.type === "income";
+        const card = document.createElement("article");
+        card.className = `event-card month-event-card${!hasAmount ? " note" : isIncome ? " income" : ""}`;
+
+        const dateLabel = document.createElement("p");
+        dateLabel.className = "month-event-date";
+        dateLabel.textContent = new Intl.DateTimeFormat("ko-KR", {
+          month: "long", day: "numeric", weekday: "short"
+        }).format(date);
+        card.append(dateLabel);
+
+        const kind = document.createElement("div");
+        kind.className = "event-kind";
+        const kindLabel = document.createElement("span");
+        kindLabel.className = "event-kind-label";
+        kindLabel.textContent = hasAmount ? (isIncome ? "수입" : "지출") : "메모";
+        kind.append(kindLabel);
+        if (hasAmount) {
+          const amount = document.createElement("strong");
+          amount.className = `event-amount ${isIncome ? "amount-income" : "amount-expense"}`;
+          amount.textContent = `${isIncome ? "+" : "−"}${formatWon(event.amount)}`;
+          kind.append(amount);
+        }
+        card.append(kind);
+
+        const title = document.createElement("h3");
+        title.className = "event-title";
+        title.textContent = event.title || "기타";
+        card.append(title);
+        if (event.notes) {
+          const notes = document.createElement("p");
+          notes.className = "event-notes";
+          notes.textContent = event.notes;
+          card.append(notes);
+        }
+        monthEventList.append(card);
+      });
+    }
+
+    function matchesHistoryFilters(event) {
+      const isMemo = !Number.isSafeInteger(event.amount);
+      if (historyRoom.value !== "all" && event.title !== historyRoom.value) return false;
+      if (historyKind.value === "memo" && !isMemo && !event.notes?.trim()) return false;
+      if (historyKind.value === "income" && (isMemo || event.type !== "income")) return false;
+      if (historyKind.value === "expense" && (isMemo || event.type !== "expense")) return false;
+      return true;
+    }
+
+    function hideHistorySearchResults() {
+      historySearchResults.hidden = true;
+      historySearchInput.setAttribute("aria-expanded", "false");
+    }
+
+    function getRoomSearchText(roomNumber, profile) {
+      const values = [roomNumber, profile.residentName];
+      if (profile.phoneNumber) {
+        values.push("전화번호", profile.phoneNumber, profile.phoneNumber.replace(/\D/g, ""));
+      }
+      if (profile.moveInDate) {
+        const [year, month, day] = profile.moveInDate.split("-").map(Number);
+        values.push(
+          "입주일",
+          profile.moveInDate,
+          `${year}년 ${month}월 ${day}일`,
+          `${year}년 ${month}월`,
+          `${year}년`,
+          `${month}월`,
+          String(day)
+        );
+      }
+      if (profile.depositAmount !== null) {
+        values.push("보증금", String(profile.depositAmount), String(profile.depositAmount / 10000), formatTenThousandWon(profile.depositAmount));
+      }
+      if (profile.monthlyRent !== null) {
+        values.push("월세", String(profile.monthlyRent), String(profile.monthlyRent / 10000), formatTenThousandWon(profile.monthlyRent));
+      }
+      return values.join(" ").toLocaleLowerCase("ko-KR");
+    }
+
+    function selectHistoryRoomSearchResult(roomNumber) {
+      historyRoom.value = roomNumber;
+      const profile = roomProfiles[roomNumber];
+      if (profile?.moveInDate) {
+        const selectedMonth = profile.moveInDate.slice(0, 7);
+        const [year, month] = selectedMonth.split("-");
+        historyStartYear.value = year;
+        historyStartMonth.value = String(Number(month));
+        const endMonth = monthKey(new Date(Number(historyEndYear.value), Number(historyEndMonth.value) - 1, 1));
+        if (selectedMonth > endMonth) {
+          historyEndYear.value = year;
+          historyEndMonth.value = String(Number(month));
+        }
+      }
+
+      historySearchInput.value = "";
+      hideHistorySearchResults();
+      historySearchStatus.textContent = `${roomNumber}${profile?.residentName ? ` ${profile.residentName}` : ""} 호실을 선택해 해당 호실 내역을 표시합니다.`;
+      historySearchStatus.hidden = false;
+      updateHistoryYearOptions();
+      renderHistory();
+    }
+
+    function renderHistorySearchResults() {
+      const query = historySearchInput.value.trim().toLocaleLowerCase("ko-KR");
+      historySearchResults.replaceChildren();
+      if (!query) {
+        hideHistorySearchResults();
+        return;
+      }
+
+      const profileMatches = Object.entries(roomProfiles)
+        .filter(([roomNumber, profile]) => {
+          const phoneDigits = profile.phoneNumber.replace(/\D/g, "");
+          const queryDigits = query.replace(/\D/g, "");
+          const isPhoneQuery = /^[\d\s()+.-]+$/.test(query) && queryDigits.length > 0;
+          return getRoomSearchText(roomNumber, profile).includes(query)
+            || (isPhoneQuery && phoneDigits.includes(queryDigits));
+        })
+        .map(([roomNumber, profile]) => ({ roomNumber, profile }));
+      const matches = [];
+      Object.entries(events).forEach(([key, dayEvents]) => {
+        if (!Array.isArray(dayEvents)) return;
+        dayEvents.forEach((event) => {
+          if (!matchesHistoryFilters(event)) return;
+          const searchableText = `${event.title || ""} ${event.notes || ""}`.toLocaleLowerCase("ko-KR");
+          if (searchableText.includes(query)) matches.push({ key, event });
+        });
+      });
+      matches.sort((left, right) => right.key.localeCompare(left.key));
+      const resultCount = profileMatches.length + matches.length;
+
+      if (!resultCount) {
+        const empty = document.createElement("p");
+        empty.className = "history-search-empty";
+        empty.textContent = "일치하는 내역이 없습니다.";
+        historySearchResults.append(empty);
+      } else {
+        const visibleProfileMatches = profileMatches.slice(0, 30);
+        visibleProfileMatches.forEach(({ roomNumber, profile }) => {
+          const option = document.createElement("button");
+          option.className = "history-search-option";
+          option.type = "button";
+          option.setAttribute("role", "option");
+          const details = getRoomProfileDetails(roomNumber);
+          option.textContent = `${roomNumber}${profile.residentName ? ` · ${profile.residentName}` : ""}${details.length ? ` · ${details.join(" · ")}` : ""} · 호실 내역 보기`;
+          option.addEventListener("click", () => selectHistoryRoomSearchResult(roomNumber));
+          historySearchResults.append(option);
+        });
+
+        const remainingCount = Math.max(0, 30 - visibleProfileMatches.length);
+        matches.slice(0, remainingCount).forEach(({ key, event }) => {
+          const [year, month, day] = key.split("-").map(Number);
+          const option = document.createElement("button");
+          option.className = "history-search-option";
+          option.type = "button";
+          option.setAttribute("role", "option");
+          const dateLabel = new Intl.DateTimeFormat("ko-KR", {
+            year: "numeric", month: "long", day: "numeric"
+          }).format(new Date(year, month - 1, day));
+          const kind = !Number.isSafeInteger(event.amount)
+            ? "메모"
+            : event.type === "income" ? `수입 ${formatWon(event.amount)}` : `지출 ${formatWon(event.amount)}`;
+          option.textContent = `${dateLabel} · ${event.title || "기타"} · ${kind}${event.notes ? ` · ${event.notes}` : ""}`;
+          option.addEventListener("click", () => selectHistorySearchResult(key, event));
+          historySearchResults.append(option);
+        });
+        if (resultCount > 30) {
+          const more = document.createElement("p");
+          more.className = "history-search-empty";
+          more.textContent = "검색 결과는 최대 30개까지 표시됩니다. 검색어를 더 구체적으로 입력해 주세요.";
+          historySearchResults.append(more);
+        }
+      }
+      historySearchResults.hidden = false;
+      historySearchInput.setAttribute("aria-expanded", "true");
+    }
+
+    function selectHistorySearchResult(key, event) {
+      const selectedMonth = key.slice(0, 7);
+      const [year, month] = selectedMonth.split("-");
+      historyStartYear.value = year;
+      historyStartMonth.value = String(Number(month));
+      const endMonth = monthKey(new Date(Number(historyEndYear.value), Number(historyEndMonth.value) - 1, 1));
+      if (selectedMonth > endMonth) {
+        historyEndYear.value = year;
+        historyEndMonth.value = String(Number(month));
+      }
+
+      historySearchInput.value = "";
+      hideHistorySearchResults();
+      historySearchStatus.textContent = `${event.title || "기타"} 항목이 있는 ${year}년 ${Number(month)}월부터 종료 월까지 전체 내역을 표시합니다.`;
+      historySearchStatus.hidden = false;
+      updateHistoryYearOptions();
+      renderHistory();
+    }
+
+    function renderHistory() {
+      updateHistoryYearOptions();
+      const start = monthKey(new Date(Number(historyStartYear.value), Number(historyStartMonth.value) - 1, 1));
+      const end = monthKey(new Date(Number(historyEndYear.value), Number(historyEndMonth.value) - 1, 1));
+      historyList.replaceChildren();
+      if (!historyStartYear.value || !historyStartMonth.value || !historyEndYear.value || !historyEndMonth.value || start > end) {
+        historySummary.textContent = "시작 월과 종료 월을 확인해 주세요.";
+        const empty = document.createElement("p");
+        empty.className = "empty-state";
+        empty.textContent = !historyStartYear.value || !historyStartMonth.value || !historyEndYear.value || !historyEndMonth.value
+          ? "시작 월과 종료 월을 모두 선택해 주세요."
+          : "시작 월은 종료 월보다 늦을 수 없습니다.";
+        historyList.append(empty);
+        return;
+      }
+
+      const records = [];
+      Object.entries(events).forEach(([key, dayEvents]) => {
+        const eventMonth = key.slice(0, 7);
+        if (eventMonth < start || eventMonth > end || !Array.isArray(dayEvents)) return;
+        dayEvents.forEach((event) => {
+          if (!matchesHistoryFilters(event)) return;
+          const isMemo = !Number.isSafeInteger(event.amount);
+          records.push({ key, event, isMemo });
+        });
+      });
+      records.sort((left, right) => right.key.localeCompare(left.key));
+
+      const totals = records.reduce((sum, { event, isMemo }) => {
+        if (isMemo) return sum;
+        if (event.type === "income") sum.income += event.amount;
+        if (event.type === "expense") sum.expense += event.amount;
+        return sum;
+      }, { income: 0, expense: 0 });
+      const periodLabel = (value) => {
+        const [year, month] = value.split("-");
+        return `${year}년 ${Number(month)}월`;
+      };
+      historySummary.textContent = `${periodLabel(start)} ~ ${periodLabel(end)} · ${records.length}건 · 수입 ${formatWon(totals.income)} · 지출 ${formatWon(totals.expense)}`;
+      if (!records.length) {
+        const empty = document.createElement("p");
+        empty.className = "empty-state";
+        empty.textContent = "선택한 호실과 기간에 등록된 내역이 없어요.";
+        historyList.append(empty);
+        return;
+      }
+
+      records.forEach(({ key, event, isMemo }) => {
+        const [year, month, day] = key.split("-").map(Number);
+        const card = document.createElement("article");
+        card.className = `event-card history-card${isMemo ? " note" : event.type === "income" ? " income" : ""}`;
+
+        const dateLabel = document.createElement("p");
+        dateLabel.className = "history-date";
+        dateLabel.textContent = new Intl.DateTimeFormat("ko-KR", {
+          year: "numeric", month: "long", day: "numeric", weekday: "short"
+        }).format(new Date(year, month - 1, day));
+        card.append(dateLabel);
+
+        const kind = document.createElement("div");
+        kind.className = "event-kind";
+        const kindLabel = document.createElement("span");
+        kindLabel.className = "event-kind-label";
+        kindLabel.textContent = isMemo ? "메모" : event.type === "income" ? "수입" : "지출";
+        kind.append(kindLabel);
+        if (!isMemo) {
+          const amount = document.createElement("strong");
+          amount.className = `event-amount ${event.type === "income" ? "amount-income" : "amount-expense"}`;
+          amount.textContent = `${event.type === "income" ? "+" : "−"}${formatWon(event.amount)}`;
+          kind.append(amount);
+        }
+        card.append(kind);
+
+        const title = document.createElement("h3");
+        title.className = "event-title";
+        title.textContent = event.title || "기타";
+        card.append(title);
+        if (event.notes) {
+          const notes = document.createElement("p");
+          notes.className = "event-notes";
+          notes.textContent = event.notes;
+          card.append(notes);
+        }
+        historyList.append(card);
+      });
+    }
+
+    function renderAgenda() {
+      selectedDateLabel.textContent = new Intl.DateTimeFormat("ko-KR", {
+        month: "long", day: "numeric", weekday: "long"
+      }).format(selectedDate);
+      eventList.replaceChildren();
+      const dayEvents = Array.isArray(events[dateKey(selectedDate)]) ? events[dateKey(selectedDate)] : [];
+
+      if (!dayEvents.length) {
+        const empty = document.createElement("p");
+        empty.className = "empty-state";
+          empty.textContent = "등록된 내역이 없어요.\n새로운 내역을 추가해 보세요.";
+        eventList.append(empty);
+        return;
+      }
+
+      dayEvents.forEach((event) => {
+        const card = document.createElement("article");
+          card.className = `event-card${event.type === "income" ? " income" : ""}`;
+          const kind = document.createElement("div");
+          kind.className = "event-kind";
+          const kindLabel = document.createElement("span");
+          kindLabel.className = "event-kind-label";
+          kindLabel.textContent = event.type === "income" ? "수입" : event.type === "expense" ? "지출" : "기존 일정";
+          kind.append(kindLabel);
+          if (Number.isSafeInteger(event.amount)) {
+            const amount = document.createElement("strong");
+            amount.className = `event-amount ${event.type === "income" ? "amount-income" : "amount-expense"}`;
+            amount.textContent = `${event.type === "income" ? "+" : "−"}${formatWon(event.amount)}`;
+            kind.append(amount);
+          }
+          card.append(kind);
+        const title = document.createElement("h3");
+        title.className = "event-title";
+        title.textContent = event.title;
+        const roomProfile = roomProfiles[event.title];
+        if (roomProfile?.residentName) {
+          const resident = document.createElement("span");
+          resident.className = "room-resident-name";
+          resident.textContent = roomProfile.residentName;
+          title.append(resident);
+        }
+        card.append(title);
+        const profileDetails = getRoomProfileDetails(event.title);
+        if (profileDetails.length) {
+          const details = document.createElement("p");
+          details.className = "event-room-profile";
+          details.textContent = profileDetails.join(" · ");
+          card.append(details);
+        }
+        if (event.notes) {
+          const notes = document.createElement("p");
+          notes.className = "event-notes";
+          notes.textContent = event.notes;
+          card.append(notes);
+        }
+        const actions = document.createElement("div");
+        actions.className = "event-actions";
+        const edit = document.createElement("button");
+        edit.className = "edit-event";
+        edit.type = "button";
+        edit.textContent = "수정";
+        edit.setAttribute("aria-label", `${event.title} 내역 수정`);
+        edit.addEventListener("click", () => openEditDialog(event));
+        actions.append(edit);
+        const remove = document.createElement("button");
+        remove.className = "delete-event";
+        remove.type = "button";
+        remove.textContent = "삭제";
+        remove.setAttribute("aria-label", `${event.title} 내역 삭제`);
+        remove.addEventListener("click", () => deleteEvent(event.id));
+        actions.append(remove);
+        card.append(actions);
+        eventList.append(card);
+      });
+    }
+
+    function openEditDialog(event) {
+      editingEvent = { key: dateKey(selectedDate), event };
+      eventForm.reset();
+      eventDateInput.value = editingEvent.key;
+      eventForm.elements.type.value = event.type;
+      const selectedTitle = contentOptions.includes(event.title) ? event.title : "기타";
+      eventTitleSelect.value = selectedTitle;
+      eventTitleValue.textContent = selectedTitle;
+      otherTitleInput.value = selectedTitle === "기타" && event.title !== "기타" ? event.title : "";
+      eventAmountInput.value = Number.isSafeInteger(event.amount) ? String(event.amount / 10000) : "";
+      eventForm.elements.notes.value = event.notes || "";
+      eventTitleMenu.querySelectorAll(".content-option").forEach((option) => {
+        option.setAttribute("aria-selected", String(option.dataset.value === selectedTitle));
+      });
+      eventFormHeading.textContent = "내역 수정";
+      eventSaveButton.textContent = "수정 저장";
+      closeContentMenu();
+      eventValidationMessage.hidden = true;
+      updateOtherTitleField();
+      eventDialog.showModal();
+      eventTitleButton.focus();
+    }
+
+    function render() {
+      renderCalendar();
+      renderRoomView();
+      renderAgenda();
+      if (!historySection.hidden) renderHistory();
+    }
+
+    async function deleteEvent(id) {
+      const key = dateKey(selectedDate);
+      storageMessage.hidden = true;
+      try {
+        const { data, error } = await supabaseClient
+          .from("shared_calendar_entries")
+          .delete()
+          .eq("id", id)
+          .select("id");
+        if (error) throw error;
+        if (!Array.isArray(data) || !data.length) throw new Error("내역이 삭제되지 않았습니다. 새로고침 후 다시 확인해 주세요.");
+        events[key] = (events[key] || []).filter((entry) => entry.id !== id);
+        if (!events[key].length) delete events[key];
+        render();
+        setConnectionStatus("내역을 삭제했습니다.");
+      } catch (error) {
+        storageMessage.hidden = false;
+        storageMessage.textContent = `내역을 삭제하지 못했습니다: ${error.message}`;
+        console.error("공동 달력 내역 삭제 실패:", error);
+      }
+    }
+
+    document.getElementById("previous-month").addEventListener("click", () => {
+      visibleMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() - 1, 1);
+      render();
+    });
+    document.getElementById("next-month").addEventListener("click", () => {
+      visibleMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 1);
+      render();
+    });
+    calendarModeButton.addEventListener("click", () => setMonthViewMode("calendar"));
+    roomModeButton.addEventListener("click", () => setMonthViewMode("room"));
+    monthEventsToggle.addEventListener("click", () => {
+      const shouldShow = monthEventSection.hidden;
+      monthEventSection.hidden = !shouldShow;
+      monthEventsToggle.setAttribute("aria-expanded", String(shouldShow));
+      monthEventsToggle.textContent = shouldShow ? "이번 달 전체 내역 숨기기" : "이번 달 전체 내역 보기";
+      if (shouldShow) {
+        renderMonthEvents();
+        monthEventSection.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+    historyToggle.addEventListener("click", () => {
+      const shouldShow = historySection.hidden;
+      historySection.hidden = !shouldShow;
+      historyToggle.setAttribute("aria-expanded", String(shouldShow));
+      if (shouldShow) {
+        renderHistory();
+        historySection.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+    [historyRoom, historyKind].forEach((control) => {
+      control.addEventListener("change", () => {
+        renderHistorySearchResults();
+        renderHistory();
+      });
+    });
+    [historyStartYear, historyStartMonth, historyEndYear, historyEndMonth].forEach((control) => {
+      control.addEventListener("change", () => {
+        historySearchStatus.hidden = true;
+        renderHistory();
+      });
+    });
+    historySearchInput.addEventListener("input", () => {
+      historySearchStatus.hidden = true;
+      renderHistorySearchResults();
+    });
+    historySearchInput.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        hideHistorySearchResults();
+      } else if (event.key === "ArrowDown" && !historySearchResults.hidden) {
+        event.preventDefault();
+        historySearchResults.querySelector(".history-search-option")?.focus();
+      }
+    });
+    document.addEventListener("pointerdown", (event) => {
+      if (!historySearchResults.hidden && !historySearchResults.contains(event.target) && event.target !== historySearchInput) {
+        hideHistorySearchResults();
+      }
+    });
+    document.getElementById("history-one-year").addEventListener("click", () => {
+      setHistoryToTwelveMonths();
+      historySearchInput.value = "";
+      historySearchStatus.hidden = true;
+      hideHistorySearchResults();
+      renderHistory();
+    });
+    document.getElementById("go-today").addEventListener("click", () => {
+      visibleMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      selectedDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      render();
+    });
+    document.getElementById("add-event").addEventListener("click", () => {
+      editingEvent = null;
+      eventForm.reset();
+      eventDateInput.value = dateKey(selectedDate);
+      eventTitleSelect.value = "";
+      eventTitleValue.textContent = "호실을 선택해 주세요";
+      eventFormHeading.textContent = "새 내역";
+      eventSaveButton.textContent = "저장";
+      eventTitleMenu.querySelectorAll(".content-option").forEach((option) => {
+        option.setAttribute("aria-selected", "false");
+      });
+      closeContentMenu();
+      eventValidationMessage.hidden = true;
+      updateOtherTitleField();
+      eventDialog.showModal();
+      eventTitleButton.focus();
+    });
+    document.getElementById("close-day-dialog").addEventListener("click", () => dayDialog.close());
+    dayDialog.addEventListener("click", (event) => {
+      if (event.target === dayDialog) dayDialog.close();
+    });
+    function updateOtherTitleField() {
+      const isOther = eventTitleSelect.value === "기타";
+      const editingMemo = editingEvent && !Number.isSafeInteger(editingEvent.event.amount);
+      otherTitleField.hidden = !isOther;
+      otherHelp.hidden = !isOther;
+      otherTitleInput.required = false;
+      eventAmountInput.required = !isOther && !editingMemo;
+      eventAmountLabel.textContent = isOther || editingMemo ? "금액 (만원, 선택)" : "금액 (만원)";
+    }
+
+    function positionContentMenu() {
+      const rect = eventTitleButton.getBoundingClientRect();
+      const padding = 12;
+      const menuHeight = Math.min(eventTitleMenu.scrollHeight, window.innerHeight - padding * 2);
+      let top = rect.bottom + 6;
+      if (top + menuHeight > window.innerHeight - padding) {
+        top = rect.top - menuHeight - 6;
+      }
+
+      eventTitleMenu.style.top = `${Math.max(padding, Math.min(top, window.innerHeight - menuHeight - padding))}px`;
+      eventTitleMenu.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - rect.width - 8))}px`;
+      eventTitleMenu.style.width = `${Math.min(rect.width, window.innerWidth - 16)}px`;
+      eventTitleMenu.style.maxHeight = `${menuHeight}px`;
+    }
+
+    function openContentMenu(focusSelected = false) {
+      eventTitleMenu.hidden = false;
+      eventTitleButton.setAttribute("aria-expanded", "true");
+      positionContentMenu();
+      if (focusSelected) {
+        const selectedIndex = contentOptions.indexOf(eventTitleSelect.value);
+        const targetIndex = selectedIndex >= 0 ? selectedIndex : 0;
+        eventTitleMenu.querySelectorAll(".content-option")[targetIndex].focus();
+      }
+    }
+
+    function closeContentMenu() {
+      eventTitleMenu.hidden = true;
+      eventTitleButton.setAttribute("aria-expanded", "false");
+    }
+
+    function selectContentOption(value) {
+      eventTitleSelect.value = value;
+      eventTitleValue.textContent = value;
+      eventTitleMenu.querySelectorAll(".content-option").forEach((option) => {
+        option.setAttribute("aria-selected", String(option.dataset.value === value));
+      });
+      updateOtherTitleField();
+      eventValidationMessage.hidden = true;
+      closeContentMenu();
+      eventTitleButton.focus();
+    }
+
+    contentOptions.forEach((value) => {
+      const option = document.createElement("button");
+      option.className = "content-option";
+      option.type = "button";
+      option.setAttribute("role", "option");
+      option.tabIndex = -1;
+      option.dataset.value = value;
+      option.setAttribute("aria-selected", "false");
+      option.textContent = value;
+      option.addEventListener("click", () => selectContentOption(value));
+      option.addEventListener("keydown", (event) => {
+        const options = Array.from(eventTitleMenu.querySelectorAll(".content-option"));
+        const index = options.indexOf(option);
+        if (event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          closeContentMenu();
+          eventTitleButton.focus();
+        } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+          event.preventDefault();
+          options[(index + (event.key === "ArrowDown" ? 1 : options.length - 1)) % options.length].focus();
+        } else if (event.key === "Home" || event.key === "End") {
+          event.preventDefault();
+          options[event.key === "Home" ? 0 : options.length - 1].focus();
+        }
+      });
+      eventTitleMenu.append(option);
+    });
+
+    eventTitleButton.addEventListener("click", () => {
+      if (eventTitleMenu.hidden) openContentMenu();
+      else closeContentMenu();
+    });
+    eventTitleButton.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !eventTitleMenu.hidden) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeContentMenu();
+      } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault();
+        openContentMenu(true);
+      }
+    });
+    document.addEventListener("pointerdown", (event) => {
+      if (!eventTitleMenu.hidden && !eventTitleMenu.contains(event.target) && event.target !== eventTitleButton) {
+        closeContentMenu();
+      }
+    });
+    window.addEventListener("resize", () => {
+      if (!eventTitleMenu.hidden) positionContentMenu();
+    });
+    eventDialog.addEventListener("scroll", () => {
+      if (!eventTitleMenu.hidden) positionContentMenu();
+    });
+    eventForm.addEventListener("input", () => {
+      eventValidationMessage.hidden = true;
+    });
+    eventForm.addEventListener("change", () => {
+      eventValidationMessage.hidden = true;
+    });
+    document.getElementById("cancel-event").addEventListener("click", () => eventDialog.close());
+    eventDialog.addEventListener("click", (event) => {
+      if (event.target === eventDialog) eventDialog.close();
+    });
+    eventForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const formData = new FormData(eventForm);
+      const selectedTitle = String(formData.get("title") || "").trim();
+      const otherTitle = String(formData.get("other-title") || "").trim();
+      const amountText = String(formData.get("amount") || "").trim();
+      const notes = String(formData.get("notes") || "").trim();
+      const amountInTenThousands = amountText ? Number(amountText) : null;
+      const amountInWon = amountInTenThousands === null ? null : amountInTenThousands * 10000;
+      const roundedAmountInWon = amountInWon === null ? null : Math.round(amountInWon);
+      const validAmount = amountInTenThousands === null
+        || (Number.isFinite(amountInWon)
+          && amountInTenThousands > 0
+          && amountInTenThousands <= 99999999.9999
+          && Number.isSafeInteger(roundedAmountInWon)
+          && Math.abs(amountInWon - roundedAmountInWon) <= 0.0001);
+      const amount = validAmount ? roundedAmountInWon : null;
+      const amountRequired = selectedTitle !== "기타"
+        && !(editingEvent && !Number.isSafeInteger(editingEvent.event.amount));
+      if (!selectedTitle) {
+        eventValidationMessage.textContent = "호실을 선택해 주세요.";
+        eventValidationMessage.hidden = false;
+        eventTitleButton.focus();
+        return;
+      }
+      if (selectedTitle === "기타" && !otherTitle && !amountText && !notes) {
+        eventValidationMessage.textContent = "기타 내용, 금액, 메모 중 하나는 입력해 주세요.";
+        eventValidationMessage.hidden = false;
+        otherTitleInput.focus();
+        return;
+      }
+      if (amountText && (!validAmount || !Number.isSafeInteger(amount) || amount <= 0)) {
+        eventValidationMessage.textContent = "금액은 0.0001만원 단위로 입력해 주세요. (예: 1.2)";
+        eventValidationMessage.hidden = false;
+        eventAmountInput.focus();
+        return;
+      }
+      if (amountRequired && (!Number.isSafeInteger(amount) || amount <= 0)) {
+        eventValidationMessage.textContent = "금액을 만원 단위로 입력해 주세요. (예: 1.2)";
+        eventValidationMessage.hidden = false;
+        eventAmountInput.focus();
+        return;
+      }
+      const key = eventDateInput.value;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(key) || Number.isNaN(new Date(`${key}T00:00:00`).getTime())) {
+        eventValidationMessage.textContent = "올바른 날짜를 선택해 주세요.";
+        eventValidationMessage.hidden = false;
+        eventDateInput.focus();
+        return;
+      }
+      const currentEdit = editingEvent;
+      const newEvent = {
+        id: currentEdit ? currentEdit.event.id : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        title: selectedTitle === "기타" ? otherTitle || "기타" : selectedTitle,
+        type: String(formData.get("type")),
+        notes
+      };
+      if (amount !== null) newEvent.amount = amount;
+      eventSaveButton.disabled = true;
+      eventValidationMessage.hidden = true;
+      setConnectionStatus(currentEdit ? "내역 수정 중" : "내역 저장 중");
+      try {
+        const row = {
+          entry_date: key,
+          title: newEvent.title,
+          type: newEvent.type,
+          amount: newEvent.amount ?? null,
+          notes: newEvent.notes
+        };
+        if (currentEdit) {
+          const { data, error } = await supabaseClient
+            .from("shared_calendar_entries")
+            .update(row)
+            .eq("id", newEvent.id)
+            .select("id");
+          if (error) throw error;
+          if (!Array.isArray(data) || !data.length) throw new Error("내역이 수정되지 않았습니다. 새로고침 후 다시 확인해 주세요.");
+          events[currentEdit.key] = (events[currentEdit.key] || []).filter((entry) => entry.id !== newEvent.id);
+          if (!events[currentEdit.key].length) delete events[currentEdit.key];
+        } else {
+          const { error } = await supabaseClient.from("shared_calendar_entries").insert({
+            id: newEvent.id,
+            ...row
+          });
+          if (error) throw error;
+        }
+        if (!Array.isArray(events[key])) events[key] = [];
+        events[key].push(newEvent);
+        const [year, month, day] = key.split("-").map(Number);
+        selectedDate = new Date(year, month - 1, day);
+        visibleMonth = new Date(year, month - 1, 1);
+        editingEvent = null;
+        render();
+        setConnectionStatus(currentEdit ? "내역을 수정했습니다." : "내역을 저장했습니다.");
+        eventDialog.close();
+      } catch (error) {
+        eventValidationMessage.textContent = `내역을 ${currentEdit ? "수정" : "저장"}하지 못했습니다: ${error.message}`;
+        eventValidationMessage.hidden = false;
+        setConnectionStatus(`내역 ${currentEdit ? "수정" : "저장"} 실패`, true);
+        console.error(`공동 달력 내역 ${currentEdit ? "수정" : "저장"} 실패:`, error);
+      } finally {
+        eventSaveButton.disabled = false;
+      }
+    });
+
+    render();
+    const startupConfig = loadDatabaseConfig();
+    if (startupConfig) {
+      databaseUrlInput.value = startupConfig.url;
+      databaseKeyInput.value = startupConfig.key;
+      void connectToSharedDatabase(startupConfig);
+    } else {
+      databaseSetup.hidden = false;
+      calendarShell.hidden = true;
+    }
+  </script>
+</body>
+</html>
