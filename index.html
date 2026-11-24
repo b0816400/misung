@@ -136,6 +136,8 @@
     .room-card-header h3 { margin: 0; font-size: 20px; }
     .room-resident-name { margin-left: 6px; color: #b4c0d2; font-size: 14px; font-weight: 500; }
     .room-profile-details { margin: 7px 0 0; color: #aebbd0; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+    .room-card-add-event { width: 100%; min-height: 38px; margin-top: 10px; padding: 0 10px; border: 1px solid #40516b; border-radius: 8px; color: #dce5f2; background: #101b2c; font-size: 13px; font-weight: 600; }
+    .room-card-add-event:hover { border-color: var(--purple); background: #202c43; }
     .event-room-profile { margin: 6px 0 0; color: #aebbd0; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
     .room-card-count { color: var(--muted); font-size: 12px; }
     .room-card-totals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
@@ -149,6 +151,8 @@
     .room-contract-photo button:hover { border-color: var(--purple); background: #202c43; }
     .room-contract-photo-status { color: var(--muted); font-size: 12px; }
     .room-entry-list { display: grid; gap: 7px; margin-top: 12px; }
+    .room-entry-list.empty { margin-top: 6px; }
+    .room-entry-list.empty .room-mode-empty { margin: 0; }
     .room-entry { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; width: 100%; padding: 9px; border: 1px solid #29374d; border-radius: 8px; color: #e6ecf5; background: #121c2d; text-align: left; font: inherit; }
     .room-entry:hover { border-color: #7169e8; background: #1a2940; }
     .room-entry-date { color: var(--muted); font-size: 12px; }
@@ -460,7 +464,9 @@
       font-size: 13px;
     }
     .content-option-room { flex: 0 0 auto; font-weight: 700; white-space: nowrap; }
-    .content-option-details { display: flex; flex-wrap: wrap; align-items: center; column-gap: 16px; row-gap: 2px; color: #bdc8d8; }
+    .content-option-details { display: grid; flex: 1 1 auto; grid-template-columns: minmax(5.5em, 1fr) auto; align-items: center; column-gap: 16px; min-width: 0; color: #bdc8d8; }
+    .content-option-resident { min-width: 0; overflow-wrap: anywhere; }
+    .content-option-rent { white-space: nowrap; }
     .content-option:hover, .content-option[aria-selected="true"] { background: #293858; }
     .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 22px; }
     .dialog-actions button { min-height: 39px; padding: 0 15px; border: 1px solid var(--line); border-radius: 9px; color: #e6ecf5; background: #1a2639; }
@@ -766,6 +772,7 @@
       <div class="field">
         <label for="event-amount">금액 (만원)</label>
         <input id="event-amount" name="amount" type="number" min="0.0001" max="99999999.9999" step="0.0001" inputmode="decimal" required placeholder="예: 1.2">
+        <p class="storage-hint">선택한 호실의 월세가 자동 입력되며, 금액은 직접 수정할 수 있습니다.</p>
       </div>
       <div class="field">
         <label for="event-notes">메모 (선택)</label>
@@ -1126,19 +1133,20 @@
       container.append(roomLabel);
 
       const profile = roomProfiles[value];
-      const details = [];
-      if (profile?.residentName) details.push(profile.residentName);
-      if (Number.isSafeInteger(profile?.monthlyRent)) {
-        details.push(`월세 ${formatTenThousandWon(profile.monthlyRent)}`);
-      }
-      if (details.length) {
+      const residentName = profile?.residentName || "";
+      const monthlyRent = profile?.monthlyRent;
+      if (residentName || Number.isSafeInteger(monthlyRent)) {
         const detailGroup = document.createElement("span");
         detailGroup.className = "content-option-details";
-        details.forEach((detail) => {
-          const item = document.createElement("span");
-          item.textContent = detail;
-          detailGroup.append(item);
-        });
+        const resident = document.createElement("span");
+        resident.className = "content-option-resident";
+        resident.textContent = residentName || "\u00a0";
+        if (!residentName) resident.setAttribute("aria-hidden", "true");
+        const rent = document.createElement("span");
+        rent.className = "content-option-rent";
+        rent.textContent = Number.isSafeInteger(monthlyRent) ? formatTenThousandWon(monthlyRent) : "\u00a0";
+        if (!Number.isSafeInteger(monthlyRent)) rent.setAttribute("aria-hidden", "true");
+        detailGroup.append(resident, rent);
         container.append(detailGroup);
       }
     }
@@ -1986,9 +1994,31 @@
         });
         card.append(totalsView);
 
+        if (supabaseClient) {
+          const addEntryButton = document.createElement("button");
+          addEntryButton.className = "room-card-add-event";
+          addEntryButton.type = "button";
+          addEntryButton.textContent = "＋ 내역 추가";
+          addEntryButton.setAttribute("aria-label", `${roomName} 내역 추가`);
+          addEntryButton.addEventListener("click", () => {
+            const dateIsVisible = selectedDate.getFullYear() === visibleMonth.getFullYear()
+              && selectedDate.getMonth() === visibleMonth.getMonth();
+            const todayIsVisible = today.getFullYear() === visibleMonth.getFullYear()
+              && today.getMonth() === visibleMonth.getMonth();
+            const entryDate = dateIsVisible
+              ? selectedDate
+              : todayIsVisible
+                ? today
+                : visibleMonth;
+            openAddEventDialog(roomName, entryDate);
+          });
+          card.append(addEntryButton);
+        }
+
         const entryList = document.createElement("div");
         entryList.className = "room-entry-list";
         if (!records.length) {
+          entryList.classList.add("empty");
           const empty = document.createElement("p");
           empty.className = "room-mode-empty";
           empty.textContent = "이번 달 내역이 없어요.";
@@ -2553,23 +2583,30 @@
       selectedDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
       render();
     });
-    document.getElementById("add-event").addEventListener("click", () => {
+    function openAddEventDialog(roomName = "", entryDate = selectedDate) {
       editingEvent = null;
       eventForm.reset();
-      eventDateInput.value = dateKey(selectedDate);
-      eventTitleSelect.value = "";
-      eventTitleValue.textContent = "호실을 선택해 주세요";
+      eventDateInput.value = dateKey(entryDate);
+      const selectedTitle = contentOptions.includes(roomName) ? roomName : "";
+      eventTitleSelect.value = selectedTitle;
+      if (selectedTitle) setContentOptionDisplay(eventTitleValue, selectedTitle);
+      else eventTitleValue.textContent = "호실을 선택해 주세요";
       eventFormHeading.textContent = "새 내역";
       eventSaveButton.textContent = "저장";
       eventTitleMenu.querySelectorAll(".content-option").forEach((option) => {
-        option.setAttribute("aria-selected", "false");
+        option.setAttribute("aria-selected", String(option.dataset.value === selectedTitle));
       });
+      const monthlyRent = roomProfiles[selectedTitle]?.monthlyRent;
+      if (Number.isSafeInteger(monthlyRent) && monthlyRent > 0) {
+        eventAmountInput.value = String(monthlyRent / 10000);
+      }
       closeContentMenu();
       eventValidationMessage.hidden = true;
       updateOtherTitleField();
       eventDialog.showModal();
       eventTitleButton.focus();
-    });
+    }
+    document.getElementById("add-event").addEventListener("click", () => openAddEventDialog());
     document.getElementById("close-day-dialog").addEventListener("click", () => dayDialog.close());
     dayDialog.addEventListener("click", (event) => {
       if (event.target === dayDialog) dayDialog.close();
@@ -2618,6 +2655,10 @@
     function selectContentOption(value) {
       eventTitleSelect.value = value;
       setContentOptionDisplay(eventTitleValue, value);
+      const monthlyRent = roomProfiles[value]?.monthlyRent;
+      if (Number.isSafeInteger(monthlyRent) && monthlyRent > 0) {
+        eventAmountInput.value = String(monthlyRent / 10000);
+      }
       eventTitleMenu.querySelectorAll(".content-option").forEach((option) => {
         option.setAttribute("aria-selected", String(option.dataset.value === value));
       });
