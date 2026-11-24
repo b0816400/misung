@@ -431,6 +431,7 @@
       font-size: 13px;
     }
     .content-select-button:focus-visible { outline: 2px solid #9c96e8; outline-offset: 2px; }
+    #event-title-value { display: flex; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: 14px; min-width: 0; }
     #event-title-menu {
       position: fixed;
       z-index: 10;
@@ -445,7 +446,10 @@
     }
     #event-title-menu[hidden] { display: none; }
     .content-option {
+      display: flex;
       min-height: 30px;
+      align-items: center;
+      gap: 14px;
       padding: 6px 10px;
       border: 0;
       border-radius: 6px;
@@ -455,6 +459,8 @@
       font: inherit;
       font-size: 13px;
     }
+    .content-option-room { flex: 0 0 auto; font-weight: 700; white-space: nowrap; }
+    .content-option-details { display: flex; flex-wrap: wrap; align-items: center; column-gap: 16px; row-gap: 2px; color: #bdc8d8; }
     .content-option:hover, .content-option[aria-selected="true"] { background: #293858; }
     .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 22px; }
     .dialog-actions button { min-height: 39px; padding: 0 15px; border: 1px solid var(--line); border-radius: 9px; color: #e6ecf5; background: #1a2639; }
@@ -1107,23 +1113,42 @@
       return `${roomNumber.slice(0, 3)}/contract-image`;
     }
 
-    function getContentOptionLabel(value) {
-      if (!roomNumbers.includes(value)) return value;
-      const profile = roomProfiles[value];
-      const parts = [value];
-      if (profile?.residentName) parts.push(profile.residentName);
-      if (Number.isSafeInteger(profile?.monthlyRent)) {
-        parts.push(`월세 ${formatTenThousandWon(profile.monthlyRent)}`);
+    function setContentOptionDisplay(container, value) {
+      container.replaceChildren();
+      if (!roomNumbers.includes(value)) {
+        container.textContent = value;
+        return;
       }
-      return parts.join(" · ");
+
+      const roomLabel = document.createElement("strong");
+      roomLabel.className = "content-option-room";
+      roomLabel.textContent = value;
+      container.append(roomLabel);
+
+      const profile = roomProfiles[value];
+      const details = [];
+      if (profile?.residentName) details.push(profile.residentName);
+      if (Number.isSafeInteger(profile?.monthlyRent)) {
+        details.push(`월세 ${formatTenThousandWon(profile.monthlyRent)}`);
+      }
+      if (details.length) {
+        const detailGroup = document.createElement("span");
+        detailGroup.className = "content-option-details";
+        details.forEach((detail) => {
+          const item = document.createElement("span");
+          item.textContent = detail;
+          detailGroup.append(item);
+        });
+        container.append(detailGroup);
+      }
     }
 
     function refreshContentOptionLabels() {
       eventTitleMenu.querySelectorAll(".content-option").forEach((option) => {
-        option.textContent = getContentOptionLabel(option.dataset.value);
+        setContentOptionDisplay(option, option.dataset.value);
       });
       if (roomNumbers.includes(eventTitleSelect.value)) {
-        eventTitleValue.textContent = getContentOptionLabel(eventTitleSelect.value);
+        setContentOptionDisplay(eventTitleValue, eventTitleSelect.value);
       }
       if (!eventTitleMenu.hidden) positionContentMenu();
     }
@@ -2413,7 +2438,7 @@
       eventForm.elements.type.value = event.type;
       const selectedTitle = contentOptions.includes(event.title) ? event.title : "기타";
       eventTitleSelect.value = selectedTitle;
-      eventTitleValue.textContent = getContentOptionLabel(selectedTitle);
+      setContentOptionDisplay(eventTitleValue, selectedTitle);
       otherTitleInput.value = selectedTitle === "기타" && event.title !== "기타" ? event.title : "";
       eventAmountInput.value = Number.isSafeInteger(event.amount) ? String(event.amount / 10000) : "";
       eventForm.elements.notes.value = event.notes || "";
@@ -2592,7 +2617,7 @@
 
     function selectContentOption(value) {
       eventTitleSelect.value = value;
-      eventTitleValue.textContent = getContentOptionLabel(value);
+      setContentOptionDisplay(eventTitleValue, value);
       eventTitleMenu.querySelectorAll(".content-option").forEach((option) => {
         option.setAttribute("aria-selected", String(option.dataset.value === value));
       });
@@ -2610,7 +2635,7 @@
       option.tabIndex = -1;
       option.dataset.value = value;
       option.setAttribute("aria-selected", "false");
-      option.textContent = value;
+      setContentOptionDisplay(option, value);
       option.addEventListener("click", () => selectContentOption(value));
       option.addEventListener("keydown", (event) => {
         const options = Array.from(eventTitleMenu.querySelectorAll(".content-option"));
