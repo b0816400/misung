@@ -369,6 +369,9 @@
     #room-settings-dialog { width: min(520px, calc(100% - 32px)); max-height: min(85vh, 760px); overflow-y: auto; }
     #contract-photo-dialog { width: min(1000px, calc(100% - 24px)); max-height: min(94vh, 1000px); overflow: auto; }
     .contract-photo-image { display: block; max-width: 100%; max-height: 78vh; margin: 0 auto; border-radius: 8px; object-fit: contain; }
+    .contract-photo-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+    .contract-photo-actions button:disabled { cursor: wait; opacity: 0.65; }
+    .contract-photo-actions .room-contract-image-message { flex: 1 1 100%; margin-top: 0; }
     .room-contract-image-message { margin: 8px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
     .room-contract-image-message.error { color: #ff929c; }
     #day-event-list { max-height: min(52vh, 440px); overflow-y: auto; padding-right: 4px; }
@@ -829,6 +832,10 @@
         <button class="close-dialog" id="close-contract-photo" type="button">닫기</button>
       </div>
       <img class="contract-photo-image" id="contract-photo-image" alt="">
+      <div class="contract-photo-actions">
+        <button class="add-button" id="download-contract-photo" type="button">사진 다운로드</button>
+        <p class="room-contract-image-message" id="contract-photo-download-message" role="status" aria-live="polite" hidden></p>
+      </div>
       <p class="storage-message" id="contract-photo-error" role="alert" hidden>사진을 불러오지 못했습니다. 다시 시도해 주세요.</p>
     </div>
   </dialog>
@@ -897,6 +904,8 @@
     const contractPhotoDialog = document.getElementById("contract-photo-dialog");
     const contractPhotoHeading = document.getElementById("contract-photo-heading");
     const contractPhotoImage = document.getElementById("contract-photo-image");
+    const contractPhotoDownloadButton = document.getElementById("download-contract-photo");
+    const contractPhotoDownloadMessage = document.getElementById("contract-photo-download-message");
     const dayDialog = document.getElementById("day-dialog");
     const eventDialog = document.getElementById("event-dialog");
     const eventForm = document.getElementById("event-form");
@@ -936,6 +945,7 @@
     let localEventsToImport = {};
     let editingEvent = null;
     let roomProfiles = {};
+    let activeContractPhotoRoom = null;
     let supabaseClient = null;
     let realtimeChannel = null;
     let currentConfig = null;
@@ -1097,15 +1107,38 @@
       return `${roomNumber.slice(0, 3)}/contract-image`;
     }
 
+    function getContentOptionLabel(value) {
+      if (!roomNumbers.includes(value)) return value;
+      const profile = roomProfiles[value];
+      const parts = [value];
+      if (profile?.residentName) parts.push(profile.residentName);
+      if (Number.isSafeInteger(profile?.monthlyRent)) {
+        parts.push(`월세 ${formatTenThousandWon(profile.monthlyRent)}`);
+      }
+      return parts.join(" · ");
+    }
+
+    function refreshContentOptionLabels() {
+      eventTitleMenu.querySelectorAll(".content-option").forEach((option) => {
+        option.textContent = getContentOptionLabel(option.dataset.value);
+      });
+      if (roomNumbers.includes(eventTitleSelect.value)) {
+        eventTitleValue.textContent = getContentOptionLabel(eventTitleSelect.value);
+      }
+      if (!eventTitleMenu.hidden) positionContentMenu();
+    }
+
     function openRoomContractPhoto(roomNumber) {
       const imagePath = roomProfiles[roomNumber]?.contractImagePath;
       if (!supabaseClient || !imagePath) return;
       const { data } = supabaseClient.storage.from(contractImageBucket).getPublicUrl(imagePath);
       const imageUrl = new URL(data.publicUrl);
       imageUrl.searchParams.set("v", String(Date.now()));
+      activeContractPhotoRoom = roomNumber;
       contractPhotoHeading.textContent = `${roomNumber} 계약서 사진`;
       contractPhotoImage.alt = `${roomNumber} 계약서 사진`;
       document.getElementById("contract-photo-error").hidden = true;
+      setContractPhotoDownloadMessage("");
       contractPhotoImage.src = imageUrl.toString();
       contractPhotoDialog.showModal();
     }
@@ -1176,6 +1209,7 @@
         };
       });
       roomProfiles = nextRoomProfiles;
+      refreshContentOptionLabels();
     }
 
     async function refreshSharedEvents() {
@@ -1275,6 +1309,57 @@
       roomContractImageMessage.textContent = message;
       roomContractImageMessage.hidden = !message;
       roomContractImageMessage.classList.toggle("error", isError);
+    }
+
+    function setContractPhotoDownloadMessage(message, isError = false) {
+      contractPhotoDownloadMessage.textContent = message;
+      contractPhotoDownloadMessage.hidden = !message;
+      contractPhotoDownloadMessage.classList.toggle("error", isError);
+    }
+
+    async function downloadRoomContractPhoto() {
+      const roomNumber = activeContractPhotoRoom;
+      const imagePath = roomProfiles[roomNumber]?.contractImagePath;
+      if (!supabaseClient || !roomNumber || !imagePath) {
+        setContractPhotoDownloadMessage("다운로드할 사진을 찾지 못했습니다.", true);
+        return;
+      }
+
+      contractPhotoDownloadButton.disabled = true;
+      setContractPhotoDownloadMessage("다운로드를 준비하는 중입니다.");
+      let objectUrl = null;
+      try {
+        const { data, error } = await supabaseClient.storage
+          .from(contractImageBucket)
+          .download(imagePath);
+        if (error) throw error;
+        if (!data) throw new Error("사진 파일을 받지 못했습니다.");
+
+        const extension = {
+          "image/jpeg": "jpg",
+          "image/png": "png",
+          "image/webp": "webp"
+        }[data.type];
+        if (!extension) throw new Error("지원하지 않는 사진 형식입니다.");
+
+        objectUrl = URL.createObjectURL(data);
+        const link = document.createElement("a");
+        link.href = objectUrl;
+        link.download = `${roomNumber}-계약서사진.${extension}`;
+        document.body.append(link);
+        link.click();
+        link.remove();
+        const downloadUrl = objectUrl;
+        window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 30000);
+        objectUrl = null;
+        setContractPhotoDownloadMessage("다운로드를 시작했습니다. 다운로드 폴더를 확인해 주세요.");
+      } catch (error) {
+        setContractPhotoDownloadMessage(`다운로드하지 못했습니다: ${error.message}`, true);
+        console.error("호실 계약서 사진 다운로드 실패:", error);
+      } finally {
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+        contractPhotoDownloadButton.disabled = false;
+      }
     }
 
     function fillRoomSettingsForm() {
@@ -1519,7 +1604,10 @@
     });
     contractPhotoDialog.addEventListener("close", () => {
       contractPhotoImage.removeAttribute("src");
+      activeContractPhotoRoom = null;
+      setContractPhotoDownloadMessage("");
     });
+    contractPhotoDownloadButton.addEventListener("click", downloadRoomContractPhoto);
     roomSettingsForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       const roomNumber = roomSettingsNumber.value;
@@ -1575,6 +1663,7 @@
         if (error) throw error;
         if (!Array.isArray(data) || !data.length) throw new Error("호실 정보를 저장하지 못했습니다. 다시 시도해 주세요.");
         roomProfiles[roomNumber] = profile;
+        refreshContentOptionLabels();
         render();
         roomSettingsDialog.close();
         setConnectionStatus(`${roomNumber} 호실 정보를 저장했습니다.`);
@@ -2324,7 +2413,7 @@
       eventForm.elements.type.value = event.type;
       const selectedTitle = contentOptions.includes(event.title) ? event.title : "기타";
       eventTitleSelect.value = selectedTitle;
-      eventTitleValue.textContent = selectedTitle;
+      eventTitleValue.textContent = getContentOptionLabel(selectedTitle);
       otherTitleInput.value = selectedTitle === "기타" && event.title !== "기타" ? event.title : "";
       eventAmountInput.value = Number.isSafeInteger(event.amount) ? String(event.amount / 10000) : "";
       eventForm.elements.notes.value = event.notes || "";
@@ -2503,7 +2592,7 @@
 
     function selectContentOption(value) {
       eventTitleSelect.value = value;
-      eventTitleValue.textContent = value;
+      eventTitleValue.textContent = getContentOptionLabel(value);
       eventTitleMenu.querySelectorAll(".content-option").forEach((option) => {
         option.setAttribute("aria-selected", String(option.dataset.value === value));
       });
@@ -2541,6 +2630,7 @@
       });
       eventTitleMenu.append(option);
     });
+    refreshContentOptionLabels();
 
     eventTitleButton.addEventListener("click", () => {
       if (eventTitleMenu.hidden) openContentMenu();
