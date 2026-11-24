@@ -144,6 +144,10 @@
     .room-card-total strong { display: block; margin-top: 4px; font-size: 14px; }
     .room-card-total.income strong { color: #55d6a4; }
     .room-card-total.expense strong { color: #ff8792; }
+    .room-contract-photo { margin: 10px 0 0; }
+    .room-contract-photo button { min-height: 34px; padding: 0 10px; border: 1px solid #40516b; border-radius: 8px; color: #dce5f2; background: #101b2c; font-size: 12px; font-weight: 600; }
+    .room-contract-photo button:hover { border-color: var(--purple); background: #202c43; }
+    .room-contract-photo-status { color: var(--muted); font-size: 12px; }
     .room-entry-list { display: grid; gap: 7px; margin-top: 12px; }
     .room-entry { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; width: 100%; padding: 9px; border: 1px solid #29374d; border-radius: 8px; color: #e6ecf5; background: #121c2d; text-align: left; font: inherit; }
     .room-entry:hover { border-color: #7169e8; background: #1a2940; }
@@ -363,6 +367,10 @@
     }
     #day-dialog { width: min(480px, calc(100% - 32px)); max-height: min(80vh, 760px); overflow: auto; }
     #room-settings-dialog { width: min(520px, calc(100% - 32px)); max-height: min(85vh, 760px); overflow-y: auto; }
+    #contract-photo-dialog { width: min(1000px, calc(100% - 24px)); max-height: min(94vh, 1000px); overflow: auto; }
+    .contract-photo-image { display: block; max-width: 100%; max-height: 78vh; margin: 0 auto; border-radius: 8px; object-fit: contain; }
+    .room-contract-image-message { margin: 8px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .room-contract-image-message.error { color: #ff929c; }
     #day-event-list { max-height: min(52vh, 440px); overflow-y: auto; padding-right: 4px; }
     .close-dialog {
       min-height: 34px;
@@ -497,6 +505,7 @@
         margin: 0;
         border-radius: 20px 20px 0 0;
       }
+      #contract-photo-dialog { max-height: 94vh; }
       #day-dialog .dialog-content, #event-dialog .dialog-content {
         padding: 24px 20px max(24px, env(safe-area-inset-bottom));
       }
@@ -648,9 +657,8 @@
               <label for="history-room">호실</label>
               <select id="history-room">
                 <option value="all">전체 호실</option>
-                <option value="201호">201호</option><option value="202호">202호</option><option value="203호">203호</option><option value="204호">204호</option><option value="205호">205호</option>
-                <option value="301호">301호</option><option value="302호">302호</option><option value="303호">303호</option><option value="304호">304호</option><option value="305호">305호</option>
-                <option value="401호">401호</option><option value="402호">402호</option><option value="403호">403호</option><option value="405호">405호</option><option value="406호">406호</option>
+                <option value="201호">201호</option><option value="202호">202호</option><option value="203호">203호</option><option value="204호">204호</option>
+                <option value="301호">301호</option><option value="302호">302호</option><option value="303호">303호</option><option value="304호">304호</option>
               </select>
             </div>
             <div class="history-filter">
@@ -796,12 +804,33 @@
         <label for="room-monthly-rent-input">월세 (만원)</label>
         <input id="room-monthly-rent-input" type="number" min="0" max="99999999" step="0.01" inputmode="decimal" placeholder="예: 50">
       </div>
+      <p class="public-access-warning">계약서 사진은 공개되어 인터넷의 누구나 볼 수 있고, 누구나 사진을 업로드하거나 교체할 수 있습니다. 주민등록번호·계좌번호·서명 등 민감한 내용은 가리거나 올리지 마세요.</p>
+      <div class="field">
+        <label for="room-contract-image-input">계약서 사진 (JPG, PNG, WebP · 최대 10MB)</label>
+        <input id="room-contract-image-input" type="file" accept="image/jpeg,image/png,image/webp">
+      </div>
+      <button class="add-button" id="upload-room-contract-image" type="button">사진 업로드 / 교체</button>
+      <p class="room-contract-image-message" id="room-contract-image-message" role="status" aria-live="polite" hidden></p>
       <p class="storage-message" id="room-settings-message" role="alert" hidden></p>
       <div class="dialog-actions">
         <button id="cancel-room-settings" type="button">취소</button>
         <button class="save-button" id="save-room-settings" type="submit">저장</button>
       </div>
     </form>
+  </dialog>
+
+  <dialog id="contract-photo-dialog" aria-labelledby="contract-photo-heading">
+    <div class="dialog-content">
+      <div class="agenda-header">
+        <div>
+          <p>호실 계약서 사진</p>
+          <h2 id="contract-photo-heading"></h2>
+        </div>
+        <button class="close-dialog" id="close-contract-photo" type="button">닫기</button>
+      </div>
+      <img class="contract-photo-image" id="contract-photo-image" alt="">
+      <p class="storage-message" id="contract-photo-error" role="alert" hidden>사진을 불러오지 못했습니다. 다시 시도해 주세요.</p>
+    </div>
   </dialog>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -860,8 +889,14 @@
     const roomMoveInDateInput = document.getElementById("room-move-in-date-input");
     const roomDepositInput = document.getElementById("room-deposit-input");
     const roomMonthlyRentInput = document.getElementById("room-monthly-rent-input");
+    const roomContractImageInput = document.getElementById("room-contract-image-input");
+    const roomContractImageButton = document.getElementById("upload-room-contract-image");
+    const roomContractImageMessage = document.getElementById("room-contract-image-message");
     const roomSettingsMessage = document.getElementById("room-settings-message");
     const roomSettingsSaveButton = document.getElementById("save-room-settings");
+    const contractPhotoDialog = document.getElementById("contract-photo-dialog");
+    const contractPhotoHeading = document.getElementById("contract-photo-heading");
+    const contractPhotoImage = document.getElementById("contract-photo-image");
     const dayDialog = document.getElementById("day-dialog");
     const eventDialog = document.getElementById("event-dialog");
     const eventForm = document.getElementById("event-form");
@@ -878,11 +913,13 @@
     const eventAmountInput = document.getElementById("event-amount");
     const eventAmountLabel = document.querySelector('label[for="event-amount"]');
     const contentOptions = [
-      "201호", "202호", "203호", "204호", "205호",
-      "301호", "302호", "303호", "304호", "305호",
-      "401호", "402호", "403호", "405호", "406호", "기타"
+      "201호", "202호", "203호", "204호",
+      "301호", "302호", "303호", "304호", "기타"
     ];
     const roomNumbers = contentOptions.filter((value) => value !== "기타");
+    const contractImageBucket = "misung-contract-images";
+    const contractImageMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+    const contractImageMaxSize = 10 * 1024 * 1024;
     roomNumbers.forEach((roomNumber) => {
       const option = document.createElement("option");
       option.value = roomNumber;
@@ -1056,6 +1093,23 @@
       return defaultDatabaseConfig;
     }
 
+    function getRoomContractImagePath(roomNumber) {
+      return `${roomNumber.slice(0, 3)}/contract-image`;
+    }
+
+    function openRoomContractPhoto(roomNumber) {
+      const imagePath = roomProfiles[roomNumber]?.contractImagePath;
+      if (!supabaseClient || !imagePath) return;
+      const { data } = supabaseClient.storage.from(contractImageBucket).getPublicUrl(imagePath);
+      const imageUrl = new URL(data.publicUrl);
+      imageUrl.searchParams.set("v", String(Date.now()));
+      contractPhotoHeading.textContent = `${roomNumber} 계약서 사진`;
+      contractPhotoImage.alt = `${roomNumber} 계약서 사진`;
+      document.getElementById("contract-photo-error").hidden = true;
+      contractPhotoImage.src = imageUrl.toString();
+      contractPhotoDialog.showModal();
+    }
+
     function renderDatabaseRows(rows) {
       const nextEvents = {};
       rows.forEach((row) => {
@@ -1108,12 +1162,17 @@
         if (monthlyRent !== null && (!Number.isSafeInteger(monthlyRent) || monthlyRent < 0)) {
           throw new Error(`${roomNumber} 월세가 올바르지 않습니다.`);
         }
+        const contractImagePath = row.contract_image_path;
+        if (contractImagePath !== null && contractImagePath !== getRoomContractImagePath(roomNumber)) {
+          throw new Error(`${roomNumber} 계약서 사진 경로가 올바르지 않습니다.`);
+        }
         nextRoomProfiles[roomNumber] = {
           residentName,
           phoneNumber,
           moveInDate: row.move_in_date,
           depositAmount,
-          monthlyRent
+          monthlyRent,
+          contractImagePath
         };
       });
       roomProfiles = nextRoomProfiles;
@@ -1136,7 +1195,8 @@
     async function refreshRoomProfiles() {
       const { data, error } = await supabaseClient
         .from("shared_calendar_rooms")
-        .select("room_number, resident_name, phone_number, move_in_date, deposit_amount, monthly_rent")
+        .select("room_number, resident_name, phone_number, move_in_date, deposit_amount, monthly_rent, contract_image_path")
+        .in("room_number", roomNumbers)
         .order("room_number", { ascending: true });
       if (error) throw error;
       if (!Array.isArray(data)) throw new Error("공동 데이터베이스에서 호실 설정을 받지 못했습니다.");
@@ -1211,20 +1271,29 @@
       roomSettingsMessage.classList.toggle("error", isError);
     }
 
+    function setRoomContractImageMessage(message, isError = false) {
+      roomContractImageMessage.textContent = message;
+      roomContractImageMessage.hidden = !message;
+      roomContractImageMessage.classList.toggle("error", isError);
+    }
+
     function fillRoomSettingsForm() {
       const profile = roomProfiles[roomSettingsNumber.value] || {
         residentName: "",
         phoneNumber: "",
         moveInDate: null,
         depositAmount: null,
-        monthlyRent: null
+        monthlyRent: null,
+        contractImagePath: null
       };
       roomResidentNameInput.value = profile.residentName;
       roomPhoneNumberInput.value = formatPhoneNumber(profile.phoneNumber);
       roomMoveInDateInput.value = profile.moveInDate || "";
       roomDepositInput.value = profile.depositAmount === null ? "" : String(profile.depositAmount / 10000);
       roomMonthlyRentInput.value = profile.monthlyRent === null ? "" : String(profile.monthlyRent / 10000);
+      roomContractImageInput.value = "";
       setRoomSettingsMessage("");
+      setRoomContractImageMessage("");
     }
 
     downloadLocalDataButton.addEventListener("click", () => {
@@ -1262,7 +1331,8 @@
         if (!Array.isArray(data)) throw new Error("공동 달력에서 내역 목록을 받지 못했습니다.");
         const { data: roomData, error: roomError } = await client
           .from("shared_calendar_rooms")
-          .select("room_number, resident_name, phone_number, move_in_date, deposit_amount, monthly_rent")
+          .select("room_number, resident_name, phone_number, move_in_date, deposit_amount, monthly_rent, contract_image_path")
+          .in("room_number", roomNumbers)
           .order("room_number", { ascending: true });
         if (roomError) throw roomError;
         if (!Array.isArray(roomData)) throw new Error("공동 데이터베이스에서 호실 설정을 받지 못했습니다.");
@@ -1340,6 +1410,86 @@
       roomSettingsDialog.showModal();
     });
     roomSettingsNumber.addEventListener("change", fillRoomSettingsForm);
+    roomContractImageButton.addEventListener("click", async () => {
+      const roomNumber = roomSettingsNumber.value;
+      const file = roomContractImageInput.files?.[0];
+      if (!supabaseClient) {
+        setRoomContractImageMessage("먼저 공동 달력에 연결해 주세요.", true);
+        return;
+      }
+      if (!roomNumbers.includes(roomNumber)) {
+        setRoomContractImageMessage("호실을 선택해 주세요.", true);
+        return;
+      }
+      if (!file) {
+        setRoomContractImageMessage("업로드할 사진을 선택해 주세요.", true);
+        return;
+      }
+      if (!contractImageMimeTypes.has(file.type)) {
+        setRoomContractImageMessage("JPG, PNG, WebP 사진만 업로드할 수 있습니다.", true);
+        return;
+      }
+      if (file.size === 0 || file.size > contractImageMaxSize) {
+        setRoomContractImageMessage("사진 용량은 10MB 이하여야 합니다.", true);
+        return;
+      }
+
+      roomContractImageButton.disabled = true;
+      roomContractImageInput.disabled = true;
+      roomSettingsNumber.disabled = true;
+      roomSettingsSaveButton.disabled = true;
+      setRoomContractImageMessage("사진을 업로드하는 중입니다.");
+      const existingProfile = roomProfiles[roomNumber] || {
+        residentName: "",
+        phoneNumber: "",
+        moveInDate: null,
+        depositAmount: null,
+        monthlyRent: null,
+        contractImagePath: null
+      };
+      const imagePath = getRoomContractImagePath(roomNumber);
+      try {
+        const { error: uploadError } = await supabaseClient.storage
+          .from(contractImageBucket)
+          .upload(imagePath, file, {
+            upsert: true,
+            contentType: file.type,
+            cacheControl: "0"
+          });
+        if (uploadError) throw uploadError;
+
+        const { data, error } = await supabaseClient
+          .from("shared_calendar_rooms")
+          .upsert({
+            room_number: roomNumber,
+            resident_name: existingProfile.residentName,
+            phone_number: existingProfile.phoneNumber,
+            move_in_date: existingProfile.moveInDate,
+            deposit_amount: existingProfile.depositAmount,
+            monthly_rent: existingProfile.monthlyRent,
+            contract_image_path: imagePath,
+            updated_at: new Date().toISOString()
+          }, { onConflict: "room_number" })
+          .select("room_number");
+        if (error) throw error;
+        if (!Array.isArray(data) || !data.length) {
+          throw new Error("사진 경로를 저장하지 못했습니다. 다시 시도해 주세요.");
+        }
+
+        roomProfiles[roomNumber] = { ...existingProfile, contractImagePath: imagePath };
+        roomContractImageInput.value = "";
+        render();
+        setRoomContractImageMessage("사진을 저장했습니다. 호실 모드에서 확인할 수 있습니다.");
+      } catch (error) {
+        setRoomContractImageMessage(`업로드하지 못했습니다: ${error.message}`, true);
+        console.error("호실 계약서 사진 업로드 실패:", error);
+      } finally {
+        roomContractImageButton.disabled = false;
+        roomContractImageInput.disabled = false;
+        roomSettingsNumber.disabled = false;
+        roomSettingsSaveButton.disabled = false;
+      }
+    });
     roomPhoneNumberInput.addEventListener("input", () => {
       const input = roomPhoneNumberInput;
       const cursorPosition = input.selectionStart ?? input.value.length;
@@ -1359,6 +1509,16 @@
     document.getElementById("cancel-room-settings").addEventListener("click", () => roomSettingsDialog.close());
     roomSettingsDialog.addEventListener("click", (event) => {
       if (event.target === roomSettingsDialog) roomSettingsDialog.close();
+    });
+    document.getElementById("close-contract-photo").addEventListener("click", () => contractPhotoDialog.close());
+    contractPhotoDialog.addEventListener("click", (event) => {
+      if (event.target === contractPhotoDialog) contractPhotoDialog.close();
+    });
+    contractPhotoImage.addEventListener("error", () => {
+      document.getElementById("contract-photo-error").hidden = false;
+    });
+    contractPhotoDialog.addEventListener("close", () => {
+      contractPhotoImage.removeAttribute("src");
     });
     roomSettingsForm.addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -1394,7 +1554,8 @@
         return;
       }
 
-      const profile = { residentName, phoneNumber, moveInDate, depositAmount, monthlyRent };
+      const contractImagePath = roomProfiles[roomNumber]?.contractImagePath || null;
+      const profile = { residentName, phoneNumber, moveInDate, depositAmount, monthlyRent, contractImagePath };
       roomSettingsSaveButton.disabled = true;
       setRoomSettingsMessage("호실 정보를 저장하는 중입니다.");
       try {
@@ -1407,6 +1568,7 @@
             move_in_date: moveInDate,
             deposit_amount: depositAmount,
             monthly_rent: monthlyRent,
+            contract_image_path: contractImagePath,
             updated_at: new Date().toISOString()
           }, { onConflict: "room_number" })
           .select("room_number");
@@ -1628,8 +1790,9 @@
       });
 
       roomCardGrid.replaceChildren();
-      const visibleRooms = (selectedRoomView === "all" ? [...roomNames, "기타"] : [selectedRoomView])
-        .filter((name) => grouped.has(name));
+      const visibleRooms = selectedRoomView === "all"
+        ? [...roomNames, ...(grouped.has("기타") ? ["기타"] : [])]
+        : [selectedRoomView];
       if (!visibleRooms.length) {
         const empty = document.createElement("p");
         empty.className = "room-mode-empty";
@@ -1641,7 +1804,7 @@
       }
 
       visibleRooms.forEach((roomName) => {
-        const records = grouped.get(roomName).sort((left, right) => left.key.localeCompare(right.key));
+        const records = (grouped.get(roomName) || []).sort((left, right) => left.key.localeCompare(right.key));
         const totals = records.reduce((sum, { event }) => {
           if (!Number.isSafeInteger(event.amount)) return sum;
           if (event.type === "income") sum.income += event.amount;
@@ -1674,6 +1837,23 @@
           details.textContent = profileDetails.join(" · ");
           card.append(details);
         }
+        if (roomNumbers.includes(roomName)) {
+          const photoStatus = document.createElement("div");
+          photoStatus.className = "room-contract-photo";
+          if (profile?.contractImagePath) {
+            const viewPhotoButton = document.createElement("button");
+            viewPhotoButton.type = "button";
+            viewPhotoButton.textContent = "계약서 사진 보기";
+            viewPhotoButton.addEventListener("click", () => openRoomContractPhoto(roomName));
+            photoStatus.append(viewPhotoButton);
+          } else {
+            const noPhoto = document.createElement("span");
+            noPhoto.className = "room-contract-photo-status";
+            noPhoto.textContent = "계약서 사진 없음";
+            photoStatus.append(noPhoto);
+          }
+          card.append(photoStatus);
+        }
 
         const totalsView = document.createElement("div");
         totalsView.className = "room-card-totals";
@@ -1694,6 +1874,12 @@
 
         const entryList = document.createElement("div");
         entryList.className = "room-entry-list";
+        if (!records.length) {
+          const empty = document.createElement("p");
+          empty.className = "room-mode-empty";
+          empty.textContent = "이번 달 내역이 없어요.";
+          entryList.append(empty);
+        }
         records.forEach(({ key, event }) => {
           const [year, month, day] = key.split("-").map(Number);
           const date = new Date(year, month - 1, day);

@@ -22,15 +22,18 @@ create policy "Anyone can manage shared calendar entries"
 
 create table if not exists public.shared_calendar_rooms (
   room_number text primary key check (room_number in (
-    '201호', '202호', '203호', '204호', '205호',
-    '301호', '302호', '303호', '304호', '305호',
-    '401호', '402호', '403호', '405호', '406호'
+    '201호', '202호', '203호', '204호',
+    '301호', '302호', '303호', '304호'
   )),
   resident_name text not null default '' check (char_length(resident_name) <= 80),
   phone_number text not null default '' check (char_length(phone_number) <= 30),
   move_in_date date,
   deposit_amount bigint check (deposit_amount is null or deposit_amount between 0 and 999999999999),
   monthly_rent bigint check (monthly_rent is null or monthly_rent between 0 and 999999999999),
+  contract_image_path text check (contract_image_path is null or contract_image_path in (
+    '201/contract-image', '202/contract-image', '203/contract-image', '204/contract-image',
+    '301/contract-image', '302/contract-image', '303/contract-image', '304/contract-image'
+  )),
   updated_at timestamptz not null default now()
 );
 
@@ -38,77 +41,39 @@ alter table public.shared_calendar_rooms
   add column if not exists phone_number text not null default '';
 
 alter table public.shared_calendar_rooms
+  add column if not exists contract_image_path text;
+
+alter table public.shared_calendar_rooms
   drop constraint if exists shared_calendar_rooms_room_number_check;
 
 alter table public.shared_calendar_rooms
   add constraint shared_calendar_rooms_room_number_check
   check (room_number in (
-    '201호', '202호', '203호', '204호', '205호',
-    '301호', '302호', '303호', '304호', '305호',
-    '401호', '402호', '403호', '405호', '406호'
+    '201호', '202호', '203호', '204호',
+    '301호', '302호', '303호', '304호'
   )) not valid;
 
-do $$
-begin
-  if exists (
-    select 1 from public.shared_calendar_rooms where room_number = '404호'
-  ) or exists (
-    select 1 from public.shared_calendar_entries where title = '404호'
-  ) then
-    if exists (
-      select 1 from public.shared_calendar_rooms where room_number = '406호'
-    ) then
-      raise exception '406호 프로필이 이미 있어 호실 번호를 자동 변경할 수 없습니다.';
-    end if;
-
-    update public.shared_calendar_rooms
-    set room_number = '406호', updated_at = now()
-    where room_number = '405호';
-
-    update public.shared_calendar_rooms
-    set room_number = '405호', updated_at = now()
-    where room_number = '404호';
-
-    update public.shared_calendar_entries
-    set title = '406호'
-    where title = '405호';
-
-    update public.shared_calendar_entries
-    set title = '405호'
-    where title = '404호';
-  end if;
-end $$;
+delete from public.shared_calendar_rooms
+where room_number not in (
+  '201호', '202호', '203호', '204호',
+  '301호', '302호', '303호', '304호'
+);
 
 alter table public.shared_calendar_rooms
   validate constraint shared_calendar_rooms_room_number_check;
 
-insert into public.shared_calendar_rooms (room_number)
-values
-  ('201호'), ('202호'), ('203호'), ('204호'), ('205호'),
-  ('301호'), ('302호'), ('303호'), ('304호'), ('305호'),
-  ('401호'), ('402호'), ('403호'), ('405호'), ('406호')
-on conflict (room_number) do nothing;
+alter table public.shared_calendar_rooms
+  drop constraint if exists shared_calendar_rooms_contract_image_path_check;
 
-insert into public.shared_calendar_entries (id, entry_date, title, type, amount, notes)
-select source.id, source.entry_date, source.title, source.type, source.amount, source.notes
-from (values
-  ('history-2026-04-21-406-400000', date '2026-04-21', '406호', 'income', 400000::bigint, ''),
-  ('history-2026-05-20-406-400000', date '2026-05-20', '406호', 'income', 400000::bigint, ''),
-  ('history-2026-06-22-406-400000', date '2026-06-22', '406호', 'income', 400000::bigint, ''),
-  ('history-2026-07-21-406-400000', date '2026-07-21', '406호', 'income', 400000::bigint, ''),
-  ('history-2026-08-20-406-400000', date '2026-08-20', '406호', 'income', 400000::bigint, ''),
-  ('history-2026-09-20-406-400000', date '2026-09-20', '406호', 'income', 400000::bigint, ''),
-  ('history-2026-10-20-406-400000', date '2026-10-20', '406호', 'income', 400000::bigint, '')
-) as source(id, entry_date, title, type, amount, notes)
-where not exists (
-  select 1
-  from public.shared_calendar_entries existing
-  where existing.entry_date = source.entry_date
-    and existing.title = source.title
-    and existing.type = source.type
-    and existing.amount = source.amount
-)
-on conflict (id) do nothing;
+alter table public.shared_calendar_rooms
+  add constraint shared_calendar_rooms_contract_image_path_check
+  check (contract_image_path is null or contract_image_path in (
+    '201/contract-image', '202/contract-image', '203/contract-image', '204/contract-image',
+    '301/contract-image', '302/contract-image', '303/contract-image', '304/contract-image'
+  )) not valid;
+
+alter table public.shared_calendar_rooms
+  validate constraint shared_calendar_rooms_contract_image_path_check;
 
 alter table public.shared_calendar_rooms enable row level security;
 
@@ -122,6 +87,53 @@ create policy "Anyone can manage shared calendar rooms"
 grant usage on schema public to anon, authenticated;
 grant select, insert, update, delete on public.shared_calendar_entries to anon, authenticated;
 grant select, insert, update on public.shared_calendar_rooms to anon, authenticated;
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'misung-contract-images',
+  'misung-contract-images',
+  true,
+  10485760,
+  array['image/jpeg', 'image/png', 'image/webp']::text[]
+)
+on conflict (id) do update
+set public = excluded.public,
+    file_size_limit = excluded.file_size_limit,
+    allowed_mime_types = excluded.allowed_mime_types;
+
+grant usage on schema storage to anon, authenticated;
+grant select, insert, update on storage.objects to anon, authenticated;
+
+drop policy if exists "Anyone can read Misung contract images"
+  on storage.objects;
+create policy "Anyone can read Misung contract images"
+  on storage.objects for select to anon, authenticated
+  using (
+    bucket_id = 'misung-contract-images'
+    and name ~ '^(201|202|203|204|301|302|303|304)/contract-image$'
+  );
+
+drop policy if exists "Anyone can upload Misung contract images"
+  on storage.objects;
+create policy "Anyone can upload Misung contract images"
+  on storage.objects for insert to anon, authenticated
+  with check (
+    bucket_id = 'misung-contract-images'
+    and name ~ '^(201|202|203|204|301|302|303|304)/contract-image$'
+  );
+
+drop policy if exists "Anyone can replace Misung contract images"
+  on storage.objects;
+create policy "Anyone can replace Misung contract images"
+  on storage.objects for update to anon, authenticated
+  using (
+    bucket_id = 'misung-contract-images'
+    and name ~ '^(201|202|203|204|301|302|303|304)/contract-image$'
+  )
+  with check (
+    bucket_id = 'misung-contract-images'
+    and name ~ '^(201|202|203|204|301|302|303|304)/contract-image$'
+  );
 
 do $$
 begin
